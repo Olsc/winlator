@@ -68,6 +68,10 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         instance = this;
         mouseSpeed = PreferenceManager.getDefaultSharedPreferences(this).getFloat("cursor_speed", 1.0f);
 
+        // Default to immersive 6DOF mode for XR devices
+        isImmersive = true;
+        isSBS = false;
+
         EditText text = findViewById(R.id.XRTextInput);
         text.setVisibility(View.VISIBLE);
         text.getEditableText().clear();
@@ -140,10 +144,15 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
 
     public static boolean isSupported() {
         if (!isDeviceDetectionFinished) {
-            if (Build.MANUFACTURER.compareToIgnoreCase("META") == 0) {
-                isDeviceSupported = true;
-            }
-            if (Build.MANUFACTURER.compareToIgnoreCase("OCULUS") == 0) {
+            String manufacturer = Build.MANUFACTURER.toUpperCase();
+            if (manufacturer.contains("META") || 
+                manufacturer.contains("OCULUS") || 
+                manufacturer.contains("PICO") || 
+                manufacturer.contains("BYTEDANCE") || 
+                manufacturer.contains("HTC") || 
+                manufacturer.contains("VIVE") || 
+                manufacturer.contains("LYNX") || 
+                manufacturer.contains("MAGIC LEAP")) {
                 isDeviceSupported = true;
             }
             isDeviceDetectionFinished = true;

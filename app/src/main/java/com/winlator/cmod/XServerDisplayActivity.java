@@ -666,7 +666,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 public void onFailed(Exception e) {
                     try {
                         finalIn.close();
-                    } catch (Exception e2) {}
+                    } catch (IOException e2) {
+                        String msg = e2.getMessage();
+                        if (!(msg != null && (msg.contains("Input is not in the XZ format") || msg.contains("Not in Zstandard format")))) {
+                            e2.printStackTrace();
+                        }
+                    }
                 }
             };
             try {
@@ -704,7 +709,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             });
         };
 
-        if (xServer.screenInfo.height > xServer.screenInfo.width) {
+        // For XR devices, always force landscape orientation
+        if (XrActivity.isEnabled(this)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            runnable.run();
+        } else if (xServer.screenInfo.height > xServer.screenInfo.width) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
             configChangedCallback = runnable;
         } else
@@ -1590,7 +1599,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         envVars.put("MESA_DEBUG", "silent");
         envVars.put("MESA_NO_ERROR", "1");
         envVars.put("WINEPREFIX", imageFs.wineprefix);
-//        Log.d("Winetricks", "WINEPREFIX: " + imageFs.wineprefix);
+        File winePrefixDir = new File(imageFs.wineprefix);
+        if (winePrefixDir.exists()) {
+            FileUtils.chmod(winePrefixDir, 0700);
+            File wineServerDir = new File(winePrefixDir, ".wineserver");
+            if (wineServerDir.exists()) FileUtils.chmod(wineServerDir, 0700);
+        }
 
         boolean enableWineDebug = preferences.getBoolean("enable_wine_debug", false);
         String wineDebugChannels = preferences.getString("wine_debug_channels", SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS);
@@ -1598,6 +1612,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 ? "+" + wineDebugChannels.replace(",", ",+")
                 : "-all"
         );
+
+        // Ensure etc/machine-id exists to prevent Wine warnings
+        File machineIdFile = new File(imageFs.getRootDir(), "etc/machine-id");
+        if (!machineIdFile.exists()) {
+            File etcDir = machineIdFile.getParentFile();
+            if (!etcDir.exists()) etcDir.mkdirs();
+            FileUtils.writeString(machineIdFile, "");
+        }
 
         // Clear any temporary directory
         String rootPath = imageFs.getRootDir().getPath();

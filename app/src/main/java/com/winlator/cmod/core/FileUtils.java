@@ -61,11 +61,13 @@ public abstract class FileUtils {
     }
 
     public static String readString(Context context, String assetFile) {
-        return new String(read(context, assetFile), StandardCharsets.UTF_8);
+        byte[] data = read(context, assetFile);
+        return data != null ? new String(data, StandardCharsets.UTF_8) : "";
     }
 
     public static String readString(File file) {
-        return new String(read(file), StandardCharsets.UTF_8);
+        byte[] data = read(file);
+        return data != null ? new String(data, StandardCharsets.UTF_8) : "";
     }
 
     public static String readString(Context context, Uri uri) {
@@ -82,6 +84,8 @@ public abstract class FileUtils {
     }
 
     public static boolean write(File file, byte[] data) {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
         try (OutputStream os = new FileOutputStream(file)) {
             os.write(data, 0, data.length);
             return true;
@@ -93,6 +97,8 @@ public abstract class FileUtils {
     }
 
     public static boolean writeString(File file, String data) {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             bw.write(data);
             bw.flush();
@@ -229,6 +235,8 @@ public abstract class FileUtils {
                 throw new IllegalArgumentException("Context is required for Uri to File copying");
             }
             Uri srcUri = (Uri) src;
+            File parent = dstFile.getParentFile();
+            if (parent != null && !parent.exists()) parent.mkdirs();
             try (InputStream inputStream = context.getContentResolver().openInputStream(srcUri);
                  OutputStream outputStream = new FileOutputStream(dstFile)) {
                 byte[] buffer = new byte[1024];
@@ -281,6 +289,8 @@ public abstract class FileUtils {
     }
 
     public static boolean copy(Context context, Uri uri, File dest) {
+        File parent = dest.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
         try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
              OutputStream outputStream = new FileOutputStream(dest)) {
             byte[] buffer = new byte[1024];
@@ -297,6 +307,7 @@ public abstract class FileUtils {
 
     public static ArrayList<String> readLines(File file) {
         ArrayList<String> lines = new ArrayList<>();
+        if (!file.exists()) return lines;
         try (FileInputStream fis = new FileInputStream(file)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(fis));
             String line;
@@ -331,6 +342,15 @@ public abstract class FileUtils {
             Os.chmod(file.getAbsolutePath(), mode);
         }
         catch (ErrnoException e) {}
+    }
+
+    public static int getUnixMode(File file) {
+        try {
+            return (int) Files.getAttribute(file.toPath(), "unix:mode");
+        }
+        catch (Exception e) {
+            return file.isDirectory() ? 0771 : 0660;
+        }
     }
 
     public static File createTempFile(File parent, String prefix) {
@@ -558,6 +578,8 @@ public abstract class FileUtils {
     }
 
     public static boolean saveBitmapToFile(Bitmap bitmap, File file) {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
         try (FileOutputStream out = new FileOutputStream(file)) {
             // Compress the bitmap and write to the specified file
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
@@ -570,9 +592,12 @@ public abstract class FileUtils {
     }
 
     public static boolean writeToBinaryFile(String filename, int position, int data) {
-        try (RandomAccessFile file = new RandomAccessFile(filename, "rw")) {
-           file.seek(position);
-           file.write(data);
+        File file = new File(filename);
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
+        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+           raf.seek(position);
+           raf.write(data);
            return true;
         } catch (IOException e) {
             Log.e(TAG, "Failed to write data " + data + " at " + position + " to " + filename);

@@ -95,14 +95,14 @@ public class ContainerManager {
     public void activateContainer(Container container) {
         container.setRootDir(new File(homeDir, ImageFs.USER+"-"+container.id));
         File file = new File(homeDir, ImageFs.USER);
-        file.delete();
+        FileUtils.delete(file);
         FileUtils.symlink("./"+ImageFs.USER+"-"+container.id, file.getPath());
     }
 
-    public void createContainerAsync(final JSONObject data, ContentsManager contentsManager, Callback<Container> callback) {
+    public void createContainerAsync(final JSONObject data, ContentsManager contentsManager, Callback<Container> callback, Callback<Integer> progressCallback) {
         final Handler handler = new Handler();
         Executors.newSingleThreadExecutor().execute(() -> {
-            final Container container = createContainer(data, contentsManager);
+            final Container container = createContainer(data, contentsManager, progressCallback, handler);
             handler.post(() -> callback.call(container));
         });
     }
@@ -123,7 +123,7 @@ public class ContainerManager {
         });
     }
 
-    private Container createContainer(JSONObject data, ContentsManager contentsManager) {
+    private Container createContainer(JSONObject data, ContentsManager contentsManager, Callback<Integer> progressCallback, Handler handler) {
         try {
             int id = maxContainerId + 1;
             data.put("id", id);
@@ -137,7 +137,14 @@ public class ContainerManager {
 
             container.setWineVersion(data.getString("wineVersion"));
 
-            if (!extractContainerPatternFile(container, container.getWineVersion(), contentsManager, containerDir, null)) {
+            OnExtractFileListener onExtractFileListener = (file, progress) -> {
+                if (progressCallback != null && handler != null) {
+                    handler.post(() -> progressCallback.call((int)progress));
+                }
+                return file;
+            };
+
+            if (!extractContainerPatternFile(container, container.getWineVersion(), contentsManager, containerDir, onExtractFileListener)) {
                 FileUtils.delete(containerDir);
                 return null;
             }
@@ -167,7 +174,7 @@ public class ContainerManager {
         if (!dstDir.mkdirs()) return;
 
         // Use the refactored copy method that doesn't require a Context for File operations
-        if (!FileUtils.copy(srcContainer.getRootDir(), dstDir, file -> FileUtils.chmod(file, 0771))) {
+        if (!FileUtils.copy(srcContainer.getRootDir(), dstDir, file -> FileUtils.chmod(file, 0700))) {
             FileUtils.delete(dstDir);
             return;
         }
@@ -294,11 +301,16 @@ public class ContainerManager {
         return null;  // Return null if no matching container is found
     }
 
-    public void importContainer(File importDir, Runnable callback) {
+    public void importContainer(android.net.Uri uri, Runnable callback) {
+        importContainer(uri, null, callback);
+    }
+
+    public void importContainer(android.net.Uri uri, Callback<Integer> progressCallback, Runnable callback) {
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
-                if (!importDir.exists() || !importDir.isDirectory()) {
-                    Log.e("ContainerManager", "Invalid container directory for import: " + importDir.getPath());
+                if (uri == null) {
+                    Log.e("ContainerManager", "Invalid container URI for import");
+                    if (callback != null) runOnUiThread(callback);
                     return;
                 }
 
@@ -309,36 +321,64 @@ public class ContainerManager {
 
                 if (newContainerDir.exists()) {
                     Log.e("ContainerManager", "Container directory already exists: " + newContainerDir.getPath());
+                    if (callback != null) runOnUiThread(callback);
                     return;
                 }
 
                 if (!newContainerDir.mkdirs()) {
                     Log.e("ContainerManager", "Failed to create directory: " + newContainerDir.getPath());
+                    if (callback != null) runOnUiThread(callback);
                     return;
                 }
 
-                // Copy the files from the import directory to the new container directory
-                if (!FileUtils.copy(importDir, newContainerDir, file -> FileUtils.chmod(file, 0771))) {
+                // Extract the archive from the URI directly to the new container directory
+                String fileName = FileUtils.getUriFileName(context, uri);
+                TarCompressorUtils.Type type = TarCompressorUtils.typeFromFile(fileName);
+                int[] lastReportedImportProgress = {-1};
+                boolean success = TarCompressorUtils.extract(type, context, uri, newContainerDir, null, (progress) -> {
+                    if (progressCallback != null && progress != lastReportedImportProgress[0]) {
+                        lastReportedImportProgress[0] = progress;
+                        runOnUiThread(() -> progressCallback.call(progress));
+                    }
+                });
+
+                if (!success) {
                     FileUtils.delete(newContainerDir);
-                    Log.e("ContainerManager", "Failed to copy container files to: " + newContainerDir.getPath());
+                    Log.e("ContainerManager", "Failed to extract container files to: " + newContainerDir.getPath());
+                    if (callback != null) runOnUiThread(callback);
                     return;
                 }
 
-                // Create the new container object and save its data
+                // Create the new container object
                 Container newContainer = new Container(newContainerId, this);
                 newContainer.setRootDir(newContainerDir);
-                newContainer.setName(importDir.getName());
+                
+                // Read original config from the extracted files to get the original name/settings
+                File configFile = newContainer.getConfigFile();
+                if (configFile.exists()) {
+                    try {
+                        JSONObject data = new JSONObject(FileUtils.readString(configFile));
+                        data.put("id", newContainerId);
+                        String oldName = data.optString("name", "Container");
+                        data.put("name", oldName + " (" + context.getString(R.string._new) + ")");
+                        newContainer.loadData(data);
+                    } catch (JSONException e) {
+                        Log.e("ContainerManager", "Failed to parse imported config", e);
+                        newContainer.setName(newContainerName);
+                    }
+                } else {
+                    newContainer.setName(newContainerName);
+                }
+
                 newContainer.saveData();
                 containers.add(newContainer);
-                maxContainerId++;
+                maxContainerId = Math.max(maxContainerId, newContainerId);
 
                 Log.d("ContainerManager", "Container imported successfully to: " + newContainerDir.getPath());
-                // Make sure to run the callback after successful import
-                if (callback != null) {
-                    callback.run();
-                }
             } catch (Exception e) {
-                Log.e("ContainerManager", "Failed to import container from: " + importDir.getPath(), e);
+                Log.e("ContainerManager", "Failed to import container", e);
+            } finally {
+                if (callback != null) runOnUiThread(callback);
             }
         });
     }
@@ -346,6 +386,10 @@ public class ContainerManager {
 
 
     public void exportContainer(Container container, Runnable callback) {
+        exportContainer(container, null, callback);
+    }
+
+    public void exportContainer(Container container, Callback<Integer> progressCallback, Runnable callback) {
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
                 // Create the export directory path
@@ -353,31 +397,38 @@ public class ContainerManager {
 
                 if (!exportDir.exists() && !exportDir.mkdirs()) {
                     Log.e("ContainerManager", "Failed to create export directory: " + exportDir.getPath());
-                    runOnUiThread(() -> callback.run()); // Close the preloader dialog
+                    runOnUiThread(callback);
                     return;
                 }
 
                 File containerDir = container.getRootDir();
-                File destinationDir = new File(exportDir, containerDir.getName());
+                File destinationFile = new File(exportDir, container.getName() + ".zip");
 
-                if (destinationDir.exists()) {
-                    Log.e("ContainerManager", "Export directory already exists: " + destinationDir.getPath());
-                    runOnUiThread(() -> callback.run()); // Close the preloader dialog
+                if (destinationFile.exists()) {
+                    Log.e("ContainerManager", "Export file already exists: " + destinationFile.getPath());
+                    runOnUiThread(callback);
                     return;
                 }
 
-                if (!destinationDir.mkdirs()) {
-                    Log.e("ContainerManager", "Failed to create directory: " + destinationDir.getPath());
-                    runOnUiThread(() -> callback.run()); // Close the preloader dialog
+                File[] filesToCompress = containerDir.listFiles();
+                if (filesToCompress == null) {
+                    Log.e("ContainerManager", "Failed to read container directory: " + containerDir.getPath());
+                    runOnUiThread(callback);
                     return;
                 }
 
-                if (!FileUtils.copy(containerDir, destinationDir, file -> FileUtils.chmod(file, 0771))) {
-                    Log.e("ContainerManager", "Failed to export some container files to: " + destinationDir.getPath());
-                    FileUtils.delete(destinationDir); // Optional: Delete partially copied directory
-                }
+                // Throttle progress updates: only post to UI when the integer percent changes
+                int[] lastReportedProgress = {-1};
 
-                Log.d("ContainerManager", "Container exported successfully to: " + destinationDir.getPath());
+                // Compress the contents of the container directory into a .zip file
+                TarCompressorUtils.compress(TarCompressorUtils.Type.ZIP, filesToCompress, destinationFile, 1, null, (progress) -> {
+                    if (progressCallback != null && progress != lastReportedProgress[0]) {
+                        lastReportedProgress[0] = progress;
+                        runOnUiThread(() -> progressCallback.call(progress));
+                    }
+                });
+
+                Log.d("ContainerManager", "Container exported successfully to: " + destinationFile.getPath());
             } catch (Exception e) {
                 Log.e("ContainerManager", "Failed to export container: " + container.getName(), e);
             } finally {

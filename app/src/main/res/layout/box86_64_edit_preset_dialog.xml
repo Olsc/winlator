@@ -30,7 +30,7 @@
         <TextView
             android:id="@+id/TVEnvironmentVariables"
             style="@style/FieldSetLabel"
-            android:background="#ffffff"
+            android:background="?attr/windowBackgroundColor"
             android:text="@string/environment_variables" />
     </FrameLayout>
 </LinearLayout>

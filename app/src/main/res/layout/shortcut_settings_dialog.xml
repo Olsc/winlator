@@ -137,7 +137,7 @@
                 android:id="@+id/TVWrapperVersionLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Current Version:"
+                android:text="@string/current_version_label"
                 android:textStyle="bold"
                 android:paddingRight="8dp" />
 
@@ -226,7 +226,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="64bit Emulator" />
+                android:text="@string/emulator_64bit" />
             <Spinner
                 style="@style/ComboBox"
                 android:layout_width="match_parent"
@@ -363,7 +363,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/windowBackgroundColor"
                     android:text="@string/directx" />
             </FrameLayout>
 
@@ -378,7 +378,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/windowBackgroundColor"
                     android:text="@string/general" />
             </FrameLayout>
         </LinearLayout>
@@ -457,7 +457,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/windowBackgroundColor"
                     android:text="@string/box86_box64" />
             </FrameLayout>
             
@@ -511,7 +511,7 @@
                     
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/windowBackgroundColor"
                     android:text="@string/fexcore_config" />
                     
             </FrameLayout>
@@ -594,7 +594,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/windowBackgroundColor"
                     android:text="@string/input_controls" />
             </FrameLayout>
 
@@ -720,7 +720,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/windowBackgroundColor"
                     android:text="@string/system" />
             </FrameLayout>
 
@@ -806,7 +806,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/windowBackgroundColor"
                     android:text="@string/vkbasalt" />
             </FrameLayout>
 

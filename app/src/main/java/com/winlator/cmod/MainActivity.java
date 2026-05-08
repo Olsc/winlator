@@ -52,6 +52,13 @@ import com.winlator.cmod.saves.Save;
 import com.winlator.cmod.saves.SaveManager;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
+import com.winlator.cmod.container.Container;
+import com.winlator.cmod.core.DefaultVersion;
+import com.winlator.cmod.box86_64.Box86_64Preset;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -67,6 +74,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
+    public static final boolean AUTOMATIC_START = false;
     public static final @IntRange(from = 1, to = 19) byte CONTAINER_PATTERN_COMPRESSION_LEVEL = 9;
     public static final byte PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
     public static final byte OPEN_FILE_REQUEST_CODE = 2;
@@ -94,26 +102,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
         // Initialize the controller management system
         ControllerManager.getInstance().init(getApplicationContext());
-
-
         // Get shared preferences
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        // Auto-detect XR and adapt for the first time
+        if (XrActivity.isSupported() && !sharedPreferences.contains("use_xr")) {
+            sharedPreferences.edit().putBoolean("use_xr", true).apply();
+            // Do NOT auto-enable big picture mode for XR devices
+            // Instead, we will go directly into XR mode
+        }
 
         // Check if Big Picture Mode is enabled
         boolean isBigPictureModeEnabled = sharedPreferences.getBoolean("enable_big_picture_mode", false);
 
-        if (isBigPictureModeEnabled) {
-            // If enabled, launch the BigPictureActivity and finish MainActivity
+        // For XR devices, skip BigPictureActivity and go directly to XR container launch
+        if (XrActivity.isSupported()) {
+            // Skip BigPictureActivity for XR devices - go directly to XR mode
+            // But still need to setup environment first
+            if (isBigPictureModeEnabled) {
+                // If big picture mode was enabled, we still skip it for XR
+                Log.d("MainActivity", "XR device detected, skipping BigPictureMode");
+            }
+        } else if (isBigPictureModeEnabled) {
+            // If enabled (non-XR), launch the BigPictureActivity and finish MainActivity
             Intent intent = new Intent(MainActivity.this, BigPictureActivity.class);
             startActivity(intent);
+            finish();
+            return;
         }
 
         // Load the user's preferred theme
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
 
         // Apply the theme based on the preference
@@ -123,58 +143,140 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             setTheme(R.style.AppTheme);
         }
 
+        super.onCreate(savedInstanceState);
+
 
         setContentView(R.layout.main_activity);
-
         drawerLayout = findViewById(R.id.DrawerLayout);
-        NavigationView navigationView = findViewById(R.id.NavigationView);
-        navigationView.setNavigationItemSelectedListener(this);
 
-        setSupportActionBar(findViewById(R.id.Toolbar));
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            actionBar.setDisplayHomeAsUpEnabled(true);
-            actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_menu);
+        if (AUTOMATIC_START) {
+            // Hide UI for automated flow
+            findViewById(R.id.Toolbar).setVisibility(View.GONE);
+            findViewById(R.id.NavigationView).setVisibility(View.GONE);
+            drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        } else {
+            NavigationView navigationView = findViewById(R.id.NavigationView);
+            navigationView.setNavigationItemSelectedListener(this);
+
+            setSupportActionBar(findViewById(R.id.Toolbar));
+            ActionBar actionBar = getSupportActionBar();
+            if (actionBar != null) {
+                actionBar.setDisplayHomeAsUpEnabled(true);
+                actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_menu);
+            }
+
         }
-
-        // Determine text color based on dark mode
-        int textColor = isDarkMode ? Color.WHITE : Color.BLACK;
-        setNavigationViewItemTextColor(navigationView, textColor);
-        
 
         // Initialize SaveManager and ContainerManager
         saveManager = new SaveManager(this);
         containerManager = new ContainerManager(this);
 
-        Intent intent = getIntent();
-        editInputControls = intent.getBooleanExtra("edit_input_controls", false);
-        if (editInputControls) {
-            selectedProfileId = intent.getIntExtra("selected_profile_id", 0);
-            actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_back);
-            onNavigationItemSelected(navigationView.getMenu().findItem(R.id.main_menu_input_controls));
-            navigationView.setCheckedItem(R.id.main_menu_input_controls);
+        // For XR devices, automatically setup and launch container
+        if (XrActivity.isSupported()) {
+            setupEnvironment(true);
+        } else if (AUTOMATIC_START) {
+            setupEnvironment(true);
         } else {
-            int selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0);
-            int menuItemId = selectedMenuItemId > 0 ? selectedMenuItemId : R.id.main_menu_containers;
+            ActionBar actionBar = getSupportActionBar();
+            NavigationView navigationView = findViewById(R.id.NavigationView);
 
-            actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_menu);
-            onNavigationItemSelected(navigationView.getMenu().findItem(menuItemId));
-            navigationView.setCheckedItem(menuItemId);
+            Intent intent = getIntent();
+            editInputControls = intent.getBooleanExtra("edit_input_controls", false);
+            if (editInputControls) {
+                selectedProfileId = intent.getIntExtra("selected_profile_id", 0);
+                if (actionBar != null) actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_back);
+                onNavigationItemSelected(navigationView.getMenu().findItem(R.id.main_menu_input_controls));
+                navigationView.setCheckedItem(R.id.main_menu_input_controls);
+            } else {
+                int selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0);
+                int menuItemId = selectedMenuItemId > 0 ? selectedMenuItemId : R.id.main_menu_containers;
 
-            // onCreate(), replace the two blocks with this single block
-            boolean waitingForPerms = requestAppPermissions();
-            if (!waitingForPerms) {
-                ImageFsInstaller.installIfNeeded(this, () ->
-                        checkForAndInstallAssetContents(() -> {
-                            if (!allAccessFilesDialogDismissed
-                                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                                    && !Environment.isExternalStorageManager()) {
-                                showAllFilesAccessDialog();
-                            }
-                        }));
+                if (actionBar != null) actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_menu);
+                onNavigationItemSelected(navigationView.getMenu().findItem(menuItemId));
+                navigationView.setCheckedItem(menuItemId);
+
+                setupEnvironment(false);
             }
-
         }
+    }
+
+    private void setupEnvironment(boolean autoLaunch) {
+        if (requestAppPermissions()) return;
+
+        ImageFsInstaller.installIfNeeded(this, () ->
+            checkForAndInstallAssetContents(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                    showAllFilesAccessDialog();
+                } else if (autoLaunch) {
+                    onAllSetupFinished();
+                }
+            })
+        );
+    }
+
+    private void onAllSetupFinished() {
+        // Ensure containerManager is up to date
+        containerManager = new ContainerManager(this);
+        ArrayList<Container> containers = containerManager.getContainers();
+        if (containers.isEmpty()) {
+            createDefaultContainer();
+        } else {
+            launchContainer(containers.get(0));
+        }
+    }
+
+    private void createDefaultContainer() {
+        try {
+            JSONObject data = new JSONObject();
+            data.put("name", "Default");
+            data.put("screenSize", Container.DEFAULT_SCREEN_SIZE);
+            data.put("envVars", Container.DEFAULT_ENV_VARS);
+            data.put("cpuList", Container.getFallbackCPUList());
+            data.put("graphicsDriver", Container.DEFAULT_GRAPHICS_DRIVER);
+            data.put("graphicsDriverConfig", Container.DEFAULT_GRAPHICSDRIVERCONFIG);
+            data.put("dxwrapper", Container.DEFAULT_DXWRAPPER);
+            data.put("ddrawrapper", Container.DEFAULT_DDRAWRAPPER);
+            data.put("dxwrapperConfig", Container.DEFAULT_DXWRAPPERCONFIG);
+            data.put("audioDriver", Container.DEFAULT_AUDIO_DRIVER);
+            data.put("emulator", Container.DEFAULT_EMULATOR);
+            data.put("wincomponents", Container.DEFAULT_WINCOMPONENTS);
+            data.put("drives", Container.DEFAULT_DRIVES);
+            data.put("showFPS", false);
+            data.put("wow64Mode", true);
+            data.put("startupSelection", Container.STARTUP_SELECTION_ESSENTIAL);
+            data.put("box64Version", DefaultVersion.BOX64);
+            data.put("box64Preset", Box86_64Preset.COMPATIBILITY);
+            data.put("fexcoreVersion", DefaultVersion.FEXCORE);
+            data.put("wineVersion", "proton-9.0-x86_64");
+
+            preloaderDialog.show(R.string.creating_container);
+            containerManager.createContainerAsync(data, new ContentsManager(this), (container) -> {
+                preloaderDialog.close();
+                if (container != null) {
+                    launchContainer(container);
+                }
+            }, (progress) -> {
+                preloaderDialog.show(getString(R.string.creating_container) + " (" + progress + "%)");
+            });
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void launchContainer(Container container) {
+        File box64File = new File(getFilesDir(), "imagefs/usr/bin/box64");
+        if (box64File.exists()) {
+            box64File.delete();
+        }
+
+        if (!XrActivity.isEnabled(this)) {
+            Intent intent = new Intent(this, XServerDisplayActivity.class);
+            intent.putExtra("container_id", container.id);
+            startActivity(intent);
+        } else {
+            XrActivity.openIntent(this, container.id, null);
+        }
+        finish();
     }
 
     /**
@@ -362,15 +464,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                ImageFsInstaller.installIfNeeded(this, () -> {
-                    if (!allAccessFilesDialogDismissed
-                            && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                            && !Environment.isExternalStorageManager()) {
-                        showAllFilesAccessDialog();
-                    }
-                });
+                setupEnvironment(AUTOMATIC_START);
             } else {
                 finish();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (allAccessFilesDialogDismissed) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    allAccessFilesDialogDismissed = false;
+                    if (AUTOMATIC_START) onAllSetupFinished();
+                }
+            } else {
+                allAccessFilesDialogDismissed = false;
+                if (AUTOMATIC_START) onAllSetupFinished();
             }
         }
     }
@@ -441,16 +553,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean requestAppPermissions() {
         boolean hasWritePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
         boolean hasReadPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-        boolean hasManageStoragePermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager();
 
-        if (hasWritePermission && hasReadPermission && hasManageStoragePermission) {
-            return false; // All permissions are granted
+        if (hasWritePermission && hasReadPermission) {
+            return false; // Standard permissions are granted
         }
 
-        if (!hasWritePermission || !hasReadPermission) {
-            String[] permissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-            ActivityCompat.requestPermissions(this, permissions, PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE);
-        }
+        String[] permissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+        ActivityCompat.requestPermissions(this, permissions, PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE);
 
         return true; // Permissions are still being requested
     }
@@ -618,24 +727,4 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         dialog.show();
     }
 
-    private void setNavigationViewItemTextColor(NavigationView navigationView, int color) {
-        for (int i = 0; i < navigationView.getMenu().size(); i++) {
-            MenuItem menuItem = navigationView.getMenu().getItem(i);
-            setMenuItemTextColor(menuItem, color);
-
-            // If the menu item has sub-items, iterate through them
-            if (menuItem.hasSubMenu()) {
-                for (int j = 0; j < menuItem.getSubMenu().size(); j++) {
-                    MenuItem subMenuItem = menuItem.getSubMenu().getItem(j);
-                    setMenuItemTextColor(subMenuItem, color);
-                }
-            }
-        }
-    }
-
-    private void setMenuItemTextColor(MenuItem menuItem, int color) {
-        SpannableString spanString = new SpannableString(menuItem.getTitle());
-        spanString.setSpan(new ForegroundColorSpan(color), 0, spanString.length(), 0);
-        menuItem.setTitle(spanString);
-    }
 }

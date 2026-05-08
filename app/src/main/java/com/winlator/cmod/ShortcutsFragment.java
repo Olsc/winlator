@@ -95,9 +95,9 @@ public class ShortcutsFragment extends Fragment {
 
     private void showIconPickerConfirmation(final Shortcut shortcut) {
         new AlertDialog.Builder(getContext())
-                .setTitle("Custom Icon")
-                .setMessage("You will be prompted to select an icon file. Please choose a valid .ico file.")
-                .setPositiveButton("Continue", (dialog, which) -> {
+                .setTitle(R.string.custom_icon)
+                .setMessage(R.string.custom_icon_msg)
+                .setPositiveButton(R.string.continue_btn, (dialog, which) -> {
                     // This will launch the file picker
                     openIconPicker(shortcut);
                 })
@@ -123,12 +123,12 @@ public class ShortcutsFragment extends Fragment {
 
                 // Reload the list to show the new icon
                 loadShortcutsList();
-                Toast.makeText(getContext(), "Icon updated successfully.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.icon_updated_successfully, Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(getContext(), "Failed to copy icon file.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.failed_to_copy_icon_file, Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Toast.makeText(getContext(), "Failed to update icon.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.failed_to_update_icon, Toast.LENGTH_SHORT).show();
             Log.e("ShortcutsFragment", "Error handling selected icon", e);
         }
     }
@@ -472,20 +472,6 @@ public class ShortcutsFragment extends Fragment {
             holder.menuButton.setOnClickListener((v) -> showListItemMenu(v, item));
             holder.innerArea.setOnClickListener((v) -> runFromShortcut(item));
 
-            // Get the context from the item view
-            Context context = holder.itemView.getContext();
-
-            // Check if dark mode is enabled
-            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-            boolean isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
-
-            if (isDarkMode) {
-                // Set the text color to something light for dark backgrounds
-                holder.title.setTextColor(android.graphics.Color.WHITE);
-            } else {
-                // Set the text color to something dark for light backgrounds
-                holder.title.setTextColor(android.graphics.Color.BLACK);
-            }
         }
 
         @Override
@@ -776,19 +762,19 @@ public class ShortcutsFragment extends Fragment {
 
             // Create the properties dialog
             ContentDialog dialog = new ContentDialog(getContext(), R.layout.shortcut_properties_dialog);
-            dialog.setTitle("Properties");
+            dialog.setTitle(R.string.properties);
 
             TextView playCountTextView = dialog.findViewById(R.id.play_count);
             TextView playtimeTextView = dialog.findViewById(R.id.playtime);
 
-            playCountTextView.setText("Number of times played: " + playCount);
-            playtimeTextView.setText("Playtime: " + playtimeFormatted);
+            playCountTextView.setText(getContext().getString(R.string.number_of_times_played, playCount));
+            playtimeTextView.setText(getContext().getString(R.string.playtime, playtimeFormatted));
 
             Button resetPropertiesButton = dialog.findViewById(R.id.reset_properties);
 
             resetPropertiesButton.setOnClickListener(v -> {
                 playtimePrefs.edit().remove(playtimeKey).remove(playCountKey).apply();
-                Toast.makeText(getContext(), "Properties reset successfully.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.properties_reset_success, Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
             });
 

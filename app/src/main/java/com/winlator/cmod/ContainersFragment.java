@@ -108,7 +108,7 @@ public class ContainersFragment extends Fragment {
     private void loadContainersList() {
         ArrayList<Container> containers = manager.getContainers();
         recyclerView.setAdapter(new ContainersAdapter(containers));
-        if (containers.isEmpty()) emptyTextView.setVisibility(View.VISIBLE);
+        emptyTextView.setVisibility(containers.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
 
@@ -144,7 +144,7 @@ public class ContainersFragment extends Fragment {
             iv.setClickable(true);
             iv.setFocusable(true);
             iv.setContentDescription(getString(R.string.app_name)); // or "Favorite shortcut"
-            ViewCompat.setTooltipText(iv, "Favorite");
+            ViewCompat.setTooltipText(iv, getString(R.string.favorite));
 
             favoriteItem.setActionView(iv);
             favoriteActionView = iv;
@@ -157,13 +157,13 @@ public class ContainersFragment extends Fragment {
                 v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 Shortcut fav = getFavoriteShortcut();
                 if (fav == null) {
-                    Toast.makeText(getContext(), "No favorite assigned.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), R.string.no_favorite_assigned, Toast.LENGTH_SHORT).show();
                 } else {
                     new AlertDialog.Builder(getContext())
-                            .setTitle("Clear favorite")
-                            .setMessage("Remove the current favorite?")
-                            .setPositiveButton("Remove", (d, w) -> clearFavorite())
-                            .setNegativeButton("Cancel", null)
+                            .setTitle(R.string.clear_favorite)
+                            .setMessage(R.string.remove_current_favorite)
+                            .setPositiveButton(R.string.remove, (d, w) -> clearFavorite())
+                            .setNegativeButton(R.string.cancel, null)
                             .show();
                 }
                 return true;
@@ -187,9 +187,9 @@ public class ContainersFragment extends Fragment {
                         .commit();
                 return true;
 
-//            case R.id.containers_menu_import:
-//                showImportInfoDialog();
-//                return true;
+            case R.id.containers_menu_import:
+                showImportInfoDialog();
+                return true;
 
             case R.id.action_big_picture_mode:
                 toggleBigPictureMode();
@@ -207,9 +207,9 @@ public class ContainersFragment extends Fragment {
                 Shortcut fav = getFavoriteShortcut();
                 if (fav == null) {
                     new AlertDialog.Builder(getContext())
-                            .setTitle("Favorite")
-                            .setMessage("No favorite assigned. Choose one now?")
-                            .setPositiveButton("Choose", (d, w) -> {
+                            .setTitle(R.string.favorite)
+                            .setMessage(R.string.choose_one_now)
+                            .setPositiveButton(R.string.choose, (d, w) -> {
                                 getParentFragmentManager().beginTransaction()
                                         .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down,
                                                 R.anim.slide_in_down, R.anim.slide_out_up)
@@ -322,26 +322,24 @@ public class ContainersFragment extends Fragment {
     // Show dialog to inform user about the import process
     private void showImportInfoDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Import Container");
-        builder.setMessage("This option will allow you to restore an exported container. To proceed, click OK and select your 'xuser-' directory. " +
-                "The container's settings will need to be configured after a successful import, but all files and shortcuts should be restored if you are restoring a real container. " +
-                "Beware, the directory you select will be copied into the app's storage directory, so be sure you have enough space. You can delete your copy afterward.");
-        builder.setPositiveButton("OK", (dialog, which) -> {
+        builder.setTitle(R.string.import_container);
+        builder.setMessage(R.string.import_container_description);
+        builder.setPositiveButton(R.string.ok, (dialog, which) -> {
             openFilePicker(); // Proceed to file picker
         });
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
         builder.show();
     }
 
     // Show confirmation dialog before importing the selected container
-    private void showImportConfirmationDialog(Uri uri, File importDir) {
+    private void showImportConfirmationDialog(Uri uri) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Confirm Import");
-        builder.setMessage("You selected: " + importDir.getPath() + ". Proceed to import the container?");
-        builder.setPositiveButton("Import", (dialog, which) -> {
+        builder.setTitle(R.string.confirm_import);
+        builder.setMessage(R.string.proceed_to_import_container);
+        builder.setPositiveButton(R.string.import_label, (dialog, which) -> {
             importContainer(uri); // Proceed with the import
         });
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
         builder.show();
     }
 
@@ -352,14 +350,7 @@ public class ContainersFragment extends Fragment {
             if (data != null) {
                 Uri uri = data.getData();
                 if (uri != null) {
-                    // Get the directory path directly from the Uri using FileUtils
-                    File importDir = FileUtils.getFileFromUri(getContext(), uri);
-                    if (importDir == null || !importDir.isDirectory()) {
-                        AppUtils.showToast(getContext(), "Invalid container directory.");
-                        return;
-                    }
-                    // Show confirmation dialog before importing
-                    showImportConfirmationDialog(uri, importDir);
+                    showImportConfirmationDialog(uri);
                 }
             }
         }
@@ -367,8 +358,9 @@ public class ContainersFragment extends Fragment {
 
 
     private void openFilePicker() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
         startActivityForResult(intent, REQUEST_CODE_IMPORT_CONTAINER);
     }
 
@@ -376,35 +368,16 @@ public class ContainersFragment extends Fragment {
     private void importContainer(Uri uri) {
         if (uri == null) return;
 
-        // Get the directory path directly from the Uri using FileUtils
-        File importDir = FileUtils.getFileFromUri(getContext(), uri);
-        if (importDir == null || !importDir.isDirectory()) {
-            AppUtils.showToast(getContext(), "Invalid container directory.");
-            return;
-        }
+        preloaderDialog.show(R.string.importing_container, true);
 
-        preloaderDialog.show(R.string.importing_container);
-
-        // Run the import operation on a background thread
-        new Thread(() -> {
-            try {
-                // Now use the import directory directly for importing the container
-                manager.importContainer(importDir, () -> {
-                    // This callback runs when the import operation completes
-                    getActivity().runOnUiThread(() -> {
-                        // Load containers and close preloader dialog on the UI thread
-                        loadContainersList();
-                        AppUtils.showToast(getContext(), "Container imported successfully.");
-                        preloaderDialog.close(); // Move this inside the callback
-                    });
-                });
-            } catch (Exception e) {
-                getActivity().runOnUiThread(() -> {
-                    preloaderDialog.close(); // Ensure dialog closes on error
-                    AppUtils.showToast(getContext(), "Error importing container: " + e.getMessage());
-                });
-            }
-        }).start();
+        manager.importContainer(uri, (progress) -> {
+            preloaderDialog.setProgress(progress);
+        }, () -> {
+            // This callback already runs on the UI thread (via ContainerManager.runOnUiThread)
+            loadContainersList();
+            AppUtils.showToast(getContext(), getString(R.string.container_imported_successfully));
+            preloaderDialog.close();
+        });
     }
 
 
@@ -556,12 +529,12 @@ public class ContainersFragment extends Fragment {
             layout.setPadding(padding, padding, padding, padding);
 
             TextView messageView = new TextView(context);
-            messageView.setText("No controllers have been assigned. If you are using a physical controller, open the Controller Manager and assign it to a slot.");
+            messageView.setText(R.string.no_controllers_assigned);
             messageView.setTextSize(16f);
             layout.addView(messageView);
 
             CheckBox checkbox = new CheckBox(context);
-            checkbox.setText("Don't show this again");
+            checkbox.setText(R.string.dont_show_again);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -571,9 +544,9 @@ public class ContainersFragment extends Fragment {
             layout.addView(checkbox);
 
             new AlertDialog.Builder(context)
-                    .setTitle("Controller Notice")
+                    .setTitle(R.string.controller_notice)
                     .setView(layout)
-                    .setPositiveButton("OK", (dialog, which) -> {
+                    .setPositiveButton(R.string.ok, (dialog, which) -> {
                         // If the user checks the box, save the preference
                         if (checkbox.isChecked()) {
                             prefs.edit().putBoolean(DONT_SHOW_KEY, true).apply();
@@ -587,11 +560,7 @@ public class ContainersFragment extends Fragment {
         private void proceedWithLaunch(Container container) {
             final Context context = getContext();
 
-            File box64File = new File(context.getFilesDir(), "imagefs/usr/bin/box64");
-            if (box64File.exists()) {
-                box64File.delete();
-                Log.i("ContainersFragment", "Deleted existing box64 to ensure a clean launch.");
-            }
+
 
             if (!XrActivity.isEnabled(getContext())) {
                 Intent intent = new Intent(context, XServerDisplayActivity.class);
@@ -659,11 +628,13 @@ public class ContainersFragment extends Fragment {
 
         private void exportContainer(Container container) {
             File backupDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Winlator/Backups/Containers");
-            preloaderDialog.show(R.string.exporting_container);
+            preloaderDialog.show(R.string.exporting_container, true);
 
-            manager.exportContainer(container, () -> {
+            manager.exportContainer(container, (progress) -> {
+                preloaderDialog.setProgress(progress);
+            }, () -> {
                 preloaderDialog.close(); // Ensure the dialog is closed after operation
-                showToast("Container exported successfully to " + backupDir.getPath());
+                showToast(getString(R.string.container_exported_successfully, backupDir.getPath()));
             });
         }
 
@@ -680,9 +651,9 @@ public class ContainersFragment extends Fragment {
         Shortcut fav = getFavoriteShortcut();
         if (fav == null) {
             new AlertDialog.Builder(getContext())
-                    .setTitle("Favorite")
-                    .setMessage("No favorite assigned. Choose one now?")
-                    .setPositiveButton("Choose", (d, w) -> {
+                    .setTitle(R.string.favorite)
+                    .setMessage(R.string.choose_one_now)
+                    .setPositiveButton(R.string.choose, (d, w) -> {
                         getParentFragmentManager().beginTransaction()
                                 .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down,
                                         R.anim.slide_in_down, R.anim.slide_out_up)

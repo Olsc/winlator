@@ -47,6 +47,8 @@ public abstract class HttpUtils {
             }
 
             int contentLength = connection.getContentLength();
+            File parent = destination.getParentFile();
+            if (parent != null && !parent.exists()) parent.mkdirs();
             try (InputStream inStream = new BufferedInputStream(connection.getInputStream(), StreamUtils.BUFFER_SIZE);
                  OutputStream outStream = new FileOutputStream(destination)) {
 

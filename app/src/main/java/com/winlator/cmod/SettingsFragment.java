@@ -121,9 +121,6 @@ public class SettingsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Apply dynamic styles to all labels
-        applyDynamicStylesRecursively(view);
-
 //        Button btnConfigureGyro = view.findViewById(R.id.BTConfigureGyro);
 //        btnConfigureGyro.setOnClickListener(v -> showGyroConfigDialog());
 
@@ -141,8 +138,6 @@ public class SettingsFragment extends Fragment {
 
         // Check for Dark Mode preference
         isDarkMode = preferences.getBoolean("dark_mode", false);
-        // Apply dynamic styles
-        applyDynamicStyles(view, isDarkMode);
 
         // Initialize the Dark Mode checkbox
         cbDarkMode = view.findViewById(R.id.CBDarkMode);
@@ -465,70 +460,6 @@ public class SettingsFragment extends Fragment {
     }
 
 
-    private void applyDynamicStyles(View view, boolean isDarkMode) {
-
-        Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
-        sBox64Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-
-    }
-
-    private void applyDynamicStylesRecursively(View view) {
-        TextView box86box64Label = view.findViewById(R.id.TVBox86Box64);
-        applyFieldSetLabelStyle(box86box64Label, isDarkMode);
-
-        TextView soundLabel = view.findViewById(R.id.TVSound);
-        applyFieldSetLabelStyle(soundLabel, isDarkMode);
-
-        TextView themeLabel = view.findViewById(R.id.TVTheme);
-        applyFieldSetLabelStyle(themeLabel, isDarkMode);
-
-        TextView shortcutSettingsLabel = view.findViewById(R.id.TVShortcutSettings);
-        applyFieldSetLabelStyle(shortcutSettingsLabel, isDarkMode);
-
-        TextView bigPictureModeLabel = view.findViewById(R.id.TVBigPictureMode);
-        applyFieldSetLabelStyle(bigPictureModeLabel, isDarkMode);
-
-        TextView tvCustomApiKey = view.findViewById(R.id.TVCustomApiKey);
-        applyFieldSetLabelStyle(tvCustomApiKey, isDarkMode);
-
-        // TextView shortcutSettingsLabel = view.findViewById(R.id.TVShortcutSettings);
-        // applyFieldSetLabelStyle(shortcutSettingsLabel, isDarkMode);
-
-        // Inputs tab labels
-        TextView xServerLabel = view.findViewById(R.id.TVXServer);
-        applyFieldSetLabelStyle(xServerLabel, isDarkMode);
-
-//        TextView gyroSettingsLabel = view.findViewById(R.id.TVGyroSettings);
-//        applyFieldSetLabelStyle(gyroSettingsLabel, isDarkMode);
-
-        TextView gameControllerLabel = view.findViewById(R.id.TVGameControllerLabel);
-        applyFieldSetLabelStyle(gameControllerLabel, isDarkMode);
-
-        // Advanced tab labels
-        TextView logsLabel = view.findViewById(R.id.TVLogs);
-        applyFieldSetLabelStyle(logsLabel, isDarkMode);
-
-        TextView experimentalLabel = view.findViewById(R.id.TVExperimental);
-        applyFieldSetLabelStyle(experimentalLabel, isDarkMode);
-
-        TextView ImageFsLabel = view.findViewById(R.id.TVImageFs);
-        applyFieldSetLabelStyle(ImageFsLabel, isDarkMode);
-
-    }
-
-    private void applyFieldSetLabelStyle(TextView textView, boolean isDarkMode) {
-//        Context context = textView.getContext();
-
-        if (isDarkMode) {
-            // Apply dark mode-specific attributes
-            textView.setTextColor(Color.parseColor("#cccccc")); // Set text color to #cccccc
-            textView.setBackgroundResource(R.color.window_background_color_dark); // Set dark background color
-        } else {
-            // Apply light mode-specific attributes (original FieldSetLabel)
-            textView.setTextColor(Color.parseColor("#bdbdbd")); // Set text color to #bdbdbd
-            textView.setBackgroundResource(R.color.window_background_color); // Set light background color
-        }
-    }
 
     private void initCustomApiKeySettings(View view) {
         cbEnableCustomApiKey = view.findViewById(R.id.CBEnableCustomApiKey);
@@ -689,12 +620,7 @@ public class SettingsFragment extends Fragment {
 
 
     private void showBackupConfirmationDialog() {
-        new AlertDialog.Builder(getContext())
-                .setTitle("Backup Data")
-                .setMessage("Do you want to create a backup of the app's data directory?")
-                .setPositiveButton("Yes", (dialog, which) -> backupAppData())
-                .setNegativeButton("No", null)
-                .show();
+        ContentDialog.confirm(getContext(), "Do you want to create a backup of the app\'s data directory?", () -> backupAppData());
     }
 
     private void backupAppData() {
@@ -1070,16 +996,16 @@ public class SettingsFragment extends Fragment {
 
         // Set initial values
         sbLeftDeadzone.setProgress((int) currentDeadzoneLeft);
-        tvLeftDeadzone.setText("Deadzone: " + sbLeftDeadzone.getProgress() + "%");
+        tvLeftDeadzone.setText(getString(R.string.deadzone_fmt, sbLeftDeadzone.getProgress()));
 
         sbLeftSensitivity.setProgress((int) currentSensitivityLeft);
-        tvLeftSensitivity.setText("Sensitivity: " + sbLeftSensitivity.getProgress() + "%");
+        tvLeftSensitivity.setText(getString(R.string.sensitivity_fmt, sbLeftSensitivity.getProgress()));
 
         sbRightDeadzone.setProgress((int) currentDeadzoneRight);
-        tvRightDeadzone.setText("Deadzone: " + sbRightDeadzone.getProgress() + "%");
+        tvRightDeadzone.setText(getString(R.string.deadzone_fmt, sbRightDeadzone.getProgress()));
 
         sbRightSensitivity.setProgress((int) currentSensitivityRight);
-        tvRightSensitivity.setText("Sensitivity: " + sbRightSensitivity.getProgress() + "%");
+        tvRightSensitivity.setText(getString(R.string.sensitivity_fmt, sbRightSensitivity.getProgress()));
 
         cbInvertLeftX.setChecked(invertLeftX);
         cbInvertLeftY.setChecked(invertLeftY);
@@ -1092,7 +1018,7 @@ public class SettingsFragment extends Fragment {
         sbLeftDeadzone.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvLeftDeadzone.setText("Deadzone: " + progress + "%");
+                tvLeftDeadzone.setText(getString(R.string.deadzone_fmt, progress));
             }
 
             @Override
@@ -1105,7 +1031,7 @@ public class SettingsFragment extends Fragment {
         sbLeftSensitivity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvLeftSensitivity.setText("Sensitivity: " + progress + "%");
+                tvLeftSensitivity.setText(getString(R.string.sensitivity_fmt, progress));
             }
 
             @Override
@@ -1118,7 +1044,7 @@ public class SettingsFragment extends Fragment {
         sbRightDeadzone.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvRightDeadzone.setText("Deadzone: " + progress + "%");
+                tvRightDeadzone.setText(getString(R.string.deadzone_fmt, progress));
             }
 
             @Override
@@ -1131,7 +1057,7 @@ public class SettingsFragment extends Fragment {
         sbRightSensitivity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvRightSensitivity.setText("Sensitivity: " + progress + "%");
+                tvRightSensitivity.setText(getString(R.string.sensitivity_fmt, progress));
             }
 
             @Override

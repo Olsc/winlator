@@ -5,10 +5,19 @@
     ]>
 <resources>
     <string name="app_name">Winlator Cmod</string>
+    <string name="invalid_imagefs">Error: Invalid ImageFs.</string>
+    <string name="interactive_shells_unsupported">Interactive shells are unsupported.</string>
+    <string name="current_version_label">Current Version:</string>
     <string name="run">Run</string>
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>
     <string name="add">Add</string>
+    <string name="favorite">Favorite</string>
+    <string name="import_label">Import</string>
+    <string name="no_favorite_assigned">No favorite assigned.</string>
+    <string name="choose_one_now">No favorite assigned. Choose one now?</string>
+    <string name="choose">Choose</string>
+    <string name="controller_notice">Controller Notice</string>
     <string name="shortcuts">Shortcuts</string>
     <string name="containers">Containers</string>
     <string name="input_controls">Input Controls</string>
@@ -465,6 +474,13 @@
     <string name="export_container">Backup Container</string>
     <string name="exporting_container">Exporting Container...</string>
     <string name="importing_container">Importing Container...</string>
+    <string name="import_container">Import Container</string>
+    <string name="import_container_description">This option will allow you to restore an exported container. To proceed, click OK and select your exported .tzst container file. The container\'s files and shortcuts will be restored into a new container.</string>
+    <string name="confirm_import">Confirm Import</string>
+    <string name="proceed_to_import_container">Proceed to import the selected container?</string>
+    <string name="container_imported_successfully">Container imported successfully.</string>
+    <string name="error_importing_container">Error importing container: %s</string>
+    <string name="container_exported_successfully">Container exported successfully to %s</string>
 
     <string name="brightness">Brightness</string>
     <string name="contrast">Contrast</string>
@@ -709,11 +725,114 @@ E.g. <b>META</b> for <i>META key</i>, \n
     Use the Saves Manager from the main menu. Register your saves from the old container by navigating and selecting its containing folder, then use the pop-up menu on each registered Save to Transfer (copy) it to the new container. You may also select the AppData directory, and backup an entire container\'s data to another.&lt;br/&gt;&lt;br/&gt;
     &lt;b&gt;Migrating Shortcuts:&lt;/b&gt;&lt;br/&gt;
     While you can duplicate shortcuts via their pop-up menu, it is advised to recreate them manually from inside your new container to prevent issues with mismatched drive paths.
-</string>    <string name="installing_contents">Installing contents...</string>
+</string>
+    <string name="installing_contents">Installing contents...</string>
     <string name="renderer">Renderer</string>
     <string name="gl">gl</string>
     <string name="vulkan">vulkan</string>
     <string name="gdi">gdi</string>
+    <!-- Settings Fragment -->
+    <string name="enable_dark_mode">Enable Dark Mode</string>
+    <string name="frontend_export_path">Frontend Export Path</string>
+    <string name="default_frontend_path">Default Path: Downloads/Winlator/Frontend</string>
+    <string name="choose_path">Choose Path</string>
+    <string name="shortcut_settings">Shortcut Settings</string>
+    <string name="enable_big_picture_mode">Enable Big Picture Mode on App Launch</string>
+    <string name="set_steamgrid_api_key">Set SteamGrid API Key? (Cover Art)</string>
+    <string name="steamgrid_api_key">SteamGridDB API Key</string>
+    <string name="big_picture_mode">Big Picture Mode</string>
+    <string name="disable_controller_input">Disable Controller Input</string>
+    <string name="enable_touchscreen_mode_globally">Enable Touchscreen Mode Globally</string>
+    <string name="override_joystick_behavior">Override Joystick Behavior</string>
+    <string name="backup_data">Backup Data</string>
+    <string name="restore_data">Restore Data</string>
+    <string name="graphics_driver_label">Graphics Driver:</string>
+    <string name="driver_version_label">Driver Version:</string>
+    <string name="dx_wrapper_label">DX Wrapper:</string>
+    <string name="dx_config_label">DXVK/VKD3D Config:</string>
+    <string name="audio_driver_label">Audio Driver:</string>
+    <string name="box64_preset_label">Box64 Preset:</string>
+    <string name="big_picture_empty_state">Nothing here. Launch your container and create a Shortcut to get started!</string>
+    <string name="back">Back</string>
+    <string name="youtube_url_label">YouTube Video URL (Not all YouTube Videos are supported):</string>
+    <string name="enter_youtube_url">Enter YouTube URL</string>
+    <string name="set_bg_music">Set BG Music</string>
+    <string name="select_mp3">Select MP3</string>
+    <string name="reset_mp3">Reset MP3</string>
+    <string name="music_source_label">Select Music Source:</string>
+    <string name="background_settings_label">Background settings:</string>
+    <string name="custom_wallpaper">Custom Wallpaper</string>
+    <string name="select_wallpaper">Select Wallpaper</string>
+    <string name="no_background">No Background</string>
+    <string name="wave">Wave</string>
+    <string name="gear">Gear</string>
+    <string name="quilt">Quilt</string>
+    <string name="folder">Folder</string>
+    <string name="select_animation_folder">Select Animation (*.png) Folder</string>
+    <string name="parallax_mode_label">Parallax Mode:</string>
+    <string name="slow">Slow</string>
+    <string name="default_label">Default</string>
+    <string name="fast">Fast</string>
+    <string name="animation_speed_label">Animation Speed:</string>
 
+    <!-- Winetricks -->
+    <string name="move_window">Move Window</string>
+    <string name="execute_winetricks">Execute Winetricks</string>
+    <string name="execute_winetricks_latest">Execute Winetricks Latest</string>
+    <string name="open_winetricks_folder">Open Winetricks Folder</string>
+    <string name="toggle_transparency">Toggle Transparency</string>
+    <string name="hide_winetricks">Hide Winetricks</string>
+    <string name="restart_wineserver">Restart Wineserver</string>
 
+    <!-- Shortcut Properties -->
+    <string name="number_of_times_played">Number of times played: %d</string>
+    <string name="playtime">Playtime: %s</string>
+    <string name="reset_properties">Reset Properties</string>
+
+    <!-- Java Strings -->
+    <string name="cpu_usage">CPU (%1$d%%)</string>
+    <string name="no_controllers_assigned">No controllers have been assigned. If you are using a physical controller, open the Controller Manager and assign it to a slot.</string>
+    <string name="dont_show_again">Don\'t show this again</string>
+    <string name="disable_bg_music">Disable BG Music</string>
+    <string name="enable_bg_music">Enable BG Music</string>
+    <string name="not_set">Not Set</string>
+    <string name="no_cover_art_found">No suitable cover art found for %1$s. Click the image to upload custom cover art or rename the Shortcut to something SteamGrid can recognize.</string>
+    <string name="current_version_fmt">Current Version: %s</string>
+    <string name="emulator_64bit">64bit Emulator</string>
+    <string name="winetricks_verb_hint">Enter Winetricks verb</string>
+    <string name="properties">Properties</string>
+    <string name="properties_reset_success">Properties reset successfully.</string>
+
+    <string name="remove_custom_cover_art">Remove Custom Cover Art</string>
+    <string name="upload_new_cover_art">Upload New Cover Art</string>
+    <string name="cover_art_options">Cover Art Options</string>
+    <string name="times_played">Times Played: %1$d</string>
+    <string name="display_mode_center">Center</string>
+    <string name="display_mode_stretch">Stretch</string>
+    <string name="display_mode_tile">Tile</string>
+    <string name="select_display_mode">Select Display Mode</string>
+    <string name="continue_btn">Continue</string>
+    <string name="custom_icon_msg">Do you want to select a custom icon for this shortcut?</string>
+    <string name="custom_icon">Custom Icon</string>
+    <string name="icon_updated_successfully">Icon updated successfully!</string>
+    <string name="failed_to_copy_icon_file">Failed to copy icon file</string>
+    <string name="failed_to_update_icon">Failed to update icon</string>
+    <string name="deadzone_fmt">Deadzone: %1$d%%</string>
+    <string name="sensitivity_fmt">Sensitivity: %1$d%%</string>
+    <string name="trigger_mode">Trigger Mode</string>
+    <string name="use_glibc">Use Native Glibc</string>
+    <string name="box86_64_env_var_help__dynarec_nocritcl"><![CDATA[
+        Do not use any critical sections<br /><br />
+        <b>0</b> : Default behavior<br />
+        <b>1</b> : Disable all critical sections. This can cause data races but may improve performance in some cases.
+    ]]></string>
+    <string name="mp3_reset_success">MP3 reset to default</string>
+    <string name="invalid_youtube_url">Invalid YouTube URL</string>
+    <string name="memory_usage">Memory (%1$d%%)</string>
+    <string name="processes_count">Processes: %1$d</string>
+    <string name="invalid_folder_selected">Invalid folder selected!</string>
+    <string name="no_files_in_folder">No files in folder!</string>
+    <string name="no_png_found">No PNG files found in this folder!</string>
+    <string name="clear_favorite">Clear Favorite</string>
+    <string name="remove_current_favorite">Do you want to remove the current favorite?</string>
 </resources>

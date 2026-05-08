@@ -22,4 +22,14 @@
     <attr name="extraKeysButtonActiveTextColor" format="reference" />
     <attr name="extraKeysButtonBackgroundColor" format="reference" />
     <attr name="extraKeysButtonActiveBackgroundColor" format="reference" />
+
+    <!-- Theme-dependent colors -->
+    <attr name="fieldsetLabelTextColor" format="color" />
+    <attr name="fieldsetLabelBackground" format="color" />
+    <attr name="contentDialogBackground" format="reference" />
+    <attr name="comboBoxBackground" format="reference" />
+    <attr name="editTextBackground" format="reference" />
+    <attr name="windowBackgroundColor" format="color" />
+    <attr name="buttonNeutralBackground" format="reference" />
+    <attr name="buttonPositiveBackground" format="reference" />
 </resources>

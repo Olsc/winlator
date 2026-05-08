@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <stdarg.h>
 
 static int g_debug_enabled = 0;
@@ -148,7 +148,7 @@ static void initialize_all_pads(void)
 
     LOGI("EVSHIM initializing…\n");
 
-    handle = dlopen("libSDL2-2.0.so.0", RTLD_LAZY | RTLD_GLOBAL);
+    handle = dlopen("libSDL2.so", RTLD_LAZY | RTLD_GLOBAL);
     if (!handle) { LOGE("dlopen SDL failed: %s\n", dlerror()); return; }
 
     GETFUNCPTR(SDL_Init);  GETFUNCPTR(SDL_GetError);

@@ -140,7 +140,7 @@ public class TaskManagerDialog extends ContentDialog implements OnGetProcessInfo
         activity.runOnUiThread(() -> {
             synchronized (lock) {
                 final LinearLayout container = findViewById(R.id.LLProcessList);
-                setBottomBarText(activity.getString(R.string.processes)+": " + numProcesses);
+                setBottomBarText(activity.getString(R.string.processes_count, numProcesses));
 
                 if (numProcesses == 0) {
                     container.removeAllViews();
@@ -199,8 +199,8 @@ public class TaskManagerDialog extends ContentDialog implements OnGetProcessInfo
 
         int avgClockSpeed = totalClockSpeed / clockSpeeds.length;
         TextView tvCPUTitle = findViewById(R.id.TVCPUTitle);
-        byte cpuUsagePercent = (byte)(((float)avgClockSpeed / maxClockSpeed) * 100.0f);
-        tvCPUTitle.setText("CPU ("+cpuUsagePercent+"%)");
+        int cpuUsagePercent = (int)(((float)avgClockSpeed / maxClockSpeed) * 100.0f);
+        tvCPUTitle.setText(activity.getString(R.string.cpu_usage, cpuUsagePercent));
     }
 
     private void updateMemoryInfoView() {
@@ -211,7 +211,7 @@ public class TaskManagerDialog extends ContentDialog implements OnGetProcessInfo
         byte memUsagePercent = (byte)(((double)usedMem / memoryInfo.totalMem) * 100.0f);
 
         TextView tvMemoryTitle = findViewById(R.id.TVMemoryTitle);
-        tvMemoryTitle.setText(activity.getString(R.string.memory)+" ("+memUsagePercent+"%)");
+        tvMemoryTitle.setText(activity.getString(R.string.memory_usage, (int)memUsagePercent));
 
         TextView tvMemoryInfo = findViewById(R.id.TVMemoryInfo);
         tvMemoryInfo.setText(StringUtils.formatBytes(usedMem, false)+"/"+StringUtils.formatBytes(memoryInfo.totalMem));

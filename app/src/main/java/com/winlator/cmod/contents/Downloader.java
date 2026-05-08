@@ -21,6 +21,8 @@ public class Downloader {
             InputStream input = url.openStream();
 
             // Output stream
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) parent.mkdirs();
             OutputStream output = new FileOutputStream(file.getAbsolutePath());
 
             byte[] data = new byte[1024];

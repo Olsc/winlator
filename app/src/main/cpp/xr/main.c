@@ -84,7 +84,8 @@ JNIEXPORT jboolean JNICALL Java_com_winlator_XrActivity_beginFrame(JNIEnv *env, 
 
         // Set render canvas
         int mode = immersive ? RENDER_MODE_MONO_6DOF : RENDER_MODE_MONO_SCREEN;
-        xr_module_renderer.ConfigFloat[CONFIG_CANVAS_DISTANCE] = 5.0f;
+        // Use closer distance for immersive mode (better for desktop use)
+        xr_module_renderer.ConfigFloat[CONFIG_CANVAS_DISTANCE] = immersive ? 3.0f : 5.0f;
         xr_module_renderer.ConfigInt[CONFIG_PASSTHROUGH] = !immersive;
         xr_module_renderer.ConfigInt[CONFIG_MODE] = mode;
         xr_module_renderer.ConfigInt[CONFIG_SBS] = sbs;

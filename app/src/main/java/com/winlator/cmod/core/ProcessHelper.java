@@ -89,12 +89,7 @@ public abstract class ProcessHelper {
             ProcessBuilder pb = new ProcessBuilder(splitCommand);
             pb.directory(workingDir);
             pb.environment().putAll(EnvironmentManager.getEnvVars());
-            if (debugCallbacks.isEmpty()) {
-                File null_file = new File("/dev/null");
-                pb.redirectError(null_file);
-                pb.redirectOutput(null_file);
-            }
-            //java.lang.Process process = Runtime.getRuntime().exec(splitCommand, envp, workingDir);
+            pb.redirectErrorStream(true);
             java.lang.Process process = pb.start();
 
             // Accessing hidden field
@@ -105,10 +100,8 @@ public abstract class ProcessHelper {
             pidField.setAccessible(false);
             Log.d("ProcessHelper", "Process started with pid: " + pid);
 
-            if (!debugCallbacks.isEmpty()) {
-                createDebugThread(process.getInputStream());
-                createDebugThread(process.getErrorStream());
-            }
+            createDebugThread(process.getInputStream());
+
 
         }
         catch (Exception e) {
@@ -122,7 +115,7 @@ public abstract class ProcessHelper {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (PRINT_DEBUG) System.out.println(line);
+                    if (PRINT_DEBUG) Log.d("ProcessOutput", line);
                     synchronized (debugCallbacks) {
                         if (!debugCallbacks.isEmpty()) {
                             for (Callback<String> callback : debugCallbacks) callback.call(line);
@@ -160,46 +153,39 @@ public abstract class ProcessHelper {
     public static String[] splitCommand(String command) {
         ArrayList<String> result = new ArrayList<>();
         boolean startedQuotes = false;
-        String value = "";
-        char currChar, nextChar;
-        for (int i = 0, count = command.length(); i < count; i++) {
-            currChar = command.charAt(i);
+        StringBuilder value = new StringBuilder();
+        int length = command.length();
+
+        for (int i = 0; i < length; i++) {
+            char currChar = command.charAt(i);
 
             if (startedQuotes) {
                 if (currChar == '"') {
                     startedQuotes = false;
-                    if (!value.isEmpty()) {
-                        value += '"';
-                        result.add(value);
-                        value = "";
-                    }
+                    // We don't add the quote to the value.
+                    // If the quoted string was empty, we still want to add an empty argument if it's the only thing,
+                    // but usually, we only add it when we hit a space or end of string.
+                    // Actually, for ProcessBuilder, "arg" should become arg.
+                } else {
+                    value.append(currChar);
                 }
-                else value += currChar;
-            }
-            else if (currChar == '"') {
+            } else if (currChar == '"') {
                 startedQuotes = true;
-                value += '"';
-            }
-            else {
-                nextChar = i < count-1 ? command.charAt(i+1) : '\0';
-                if (currChar == ' ' || (currChar == '\\' && nextChar == ' ')) {
-                    if (currChar == '\\') {
-                        value += ' ';
-                        i++;
-                    }
-                    else if (!value.isEmpty()) {
-                        result.add(value);
-                        value = "";
-                    }
+            } else if (currChar == ' ') {
+                if (value.length() > 0) {
+                    result.add(value.toString());
+                    value.setLength(0);
                 }
-                else {
-                    value += currChar;
-                    if (i == count-1) {
-                        result.add(value);
-                        value = "";
-                    }
-                }
+            } else if (currChar == '\\' && i + 1 < length && command.charAt(i + 1) == ' ') {
+                value.append(' ');
+                i++;
+            } else {
+                value.append(currChar);
             }
+        }
+
+        if (value.length() > 0) {
+            result.add(value.toString());
         }
 
         return result.toArray(new String[0]);

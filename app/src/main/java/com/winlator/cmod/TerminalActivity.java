@@ -39,7 +39,7 @@ public class TerminalActivity extends AppCompatActivity {
         // Initialize ImageFs and XEnvironment
         imageFs = ImageFs.find(this);
         if (!imageFs.isValid()) {
-            outputTextView.setText("Error: Invalid ImageFs.");
+            outputTextView.setText(R.string.invalid_imagefs);
             return;
         }
         xEnvironment = new XEnvironment(this, imageFs);
@@ -84,7 +84,7 @@ public class TerminalActivity extends AppCompatActivity {
     private void executeCommand(String command) {
         // Avoid interactive shells initially
         if (command.equals("bash") || command.equals("dash")) {
-            outputTextView.append("\n$ " + command + "\nInteractive shells are unsupported.\n");
+            outputTextView.append("\n$ " + command + "\n" + getString(R.string.interactive_shells_unsupported) + "\n");
             return;
         }
 

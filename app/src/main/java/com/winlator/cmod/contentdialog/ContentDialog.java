@@ -60,14 +60,6 @@ public class ContentDialog extends Dialog {
         contentView = LayoutInflater.from(context).inflate(R.layout.content_dialog, null);
 
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
-
-//        contentView.setBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark: R.drawable.content_dialog_background);
-
-        if (isDarkMode) {
-            this.getContext().setTheme(R.style.ContentDialog_Dark);
-        }
 
 
         if (layoutResId > 0) {
@@ -198,10 +190,6 @@ public class ContentDialog extends Dialog {
 
         final EditText editText = dialog.findViewById(R.id.EditText);
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
-        applyDarkThemeToEditText(editText, isDarkMode);
-
         editText.setHint(R.string.untitled);
         if (defaultText != null) editText.setText(defaultText);
         editText.setVisibility(View.VISIBLE);
@@ -215,17 +203,6 @@ public class ContentDialog extends Dialog {
         dialog.show();
     }
 
-    private static void applyDarkThemeToEditText(EditText editText, boolean isDarkMode) {
-        if (isDarkMode) {
-            editText.setTextColor(Color.WHITE); // Set text color to white for dark theme
-            editText.setHintTextColor(Color.GRAY); // Set hint color to gray
-            editText.setBackgroundResource(R.drawable.edit_text_dark); // Custom dark background drawable
-        } else {
-            editText.setTextColor(Color.BLACK); // Default text color
-            editText.setHintTextColor(Color.GRAY); // Default hint color
-            editText.setBackgroundResource(R.drawable.edit_text); // Custom light background drawable
-        }
-    }
 
     public static void showMultipleChoiceList(Context context, int titleResId, final String[] items, Callback<ArrayList<Integer>> callback) {
         ContentDialog dialog = new ContentDialog(context);

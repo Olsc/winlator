@@ -45,7 +45,7 @@
                 android:id="@+id/settingsLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Settings"
+                android:text="@string/settings"
                 android:background="@drawable/bg_transparent_dark"
                 android:textColor="@android:color/white"
                 android:gravity="center"
@@ -137,7 +137,7 @@
         android:id="@+id/TVGraphicsDriver"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Graphics Driver:"
+        android:text="@string/graphics_driver_label"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white"
         android:visibility="gone" />
@@ -146,7 +146,7 @@
         android:id="@+id/TVGraphicsDriverVersion"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Driver Version:"
+        android:text="@string/driver_version_label"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white"
         android:visibility="gone" />
@@ -155,7 +155,7 @@
         android:id="@+id/TVDXWrapper"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="DX Wrapper:"
+        android:text="@string/dx_wrapper_label"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white"
         android:visibility="gone" />
@@ -164,7 +164,7 @@
         android:id="@+id/TVDXWrapperConfig"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="DXVK/VKD3D Config:"
+        android:text="@string/dx_config_label"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white"
         android:visibility="gone" />
@@ -173,7 +173,7 @@
         android:id="@+id/TVAudioDriver"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Audio Driver:"
+        android:text="@string/audio_driver_label"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white"
         android:visibility="gone" />
@@ -182,7 +182,7 @@
         android:id="@+id/TVBox64Preset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Box64 Preset:"
+        android:text="@string/box64_preset_label"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white"
         android:visibility="gone" />
@@ -205,7 +205,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:gravity="center"
-        android:text="Nothing here. Launch your container and create a Shortcut to get started!"
+        android:text="@string/big_picture_empty_state"
         android:textColor="@android:color/white"
         android:textSize="18sp"
         android:visibility="gone"
@@ -243,7 +243,7 @@
             android:id="@+id/backLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Back"
+            android:text="@string/back"
             android:textColor="@android:color/white"
             android:gravity="center"
             android:layout_below="@id/backButton"
@@ -276,7 +276,7 @@
                     android:id="@+id/TVSettingsLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Settings"
+                    android:text="@string/settings"
                     android:textColor="@android:color/white"
                     android:textSize="18sp"
                     android:textStyle="bold"
@@ -296,7 +296,7 @@
                         android:id="@+id/youtubeUrlLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="YouTube Video URL (Not all YouTube Videos are supported):"
+                        android:text="@string/youtube_url_label"
                         android:textColor="@android:color/white"
                         android:textSize="16sp"
                         android:padding="8dp" />
@@ -313,7 +313,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:inputType="text"
-                            android:hint="Enter YouTube URL"
+                            android:hint="@string/enter_youtube_url"
                             android:background="@android:drawable/edit_text"
                             android:textColor="@android:color/black" />
 
@@ -321,7 +321,7 @@
                             android:id="@+id/loadVideoButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Set BG Music"
+                            android:text="@string/set_bg_music"
                             android:layout_marginStart="8dp" />
                     </LinearLayout>
 
@@ -330,7 +330,7 @@
                         android:id="@+id/selectMp3Button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Select MP3"
+                        android:text="@string/select_mp3"
                         android:layout_marginBottom="16dp" />
 
                     <!-- Reset MP3 Button -->
@@ -338,7 +338,7 @@
                         android:id="@+id/resetMp3Button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Reset MP3"
+                        android:text="@string/reset_mp3"
                         android:layout_marginBottom="16dp" />
 
                     <!-- Music Source Selection -->
@@ -346,7 +346,7 @@
                         android:id="@+id/musicSourceLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Select Music Source:"
+                        android:text="@string/music_source_label"
                         android:textColor="@android:color/white"
                         android:textSize="16sp"
                         android:padding="8dp" />
@@ -377,7 +377,7 @@
                         android:id="@+id/disableBgMusicButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Disable BG Music"
+                        android:text="@string/disable_bg_music"
                         android:layout_marginTop="16dp" />
 
                 </LinearLayout>
@@ -392,7 +392,7 @@
                         android:id="@+id/themeLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Background settings:"
+                        android:text="@string/background_settings_label"
                         android:textColor="@android:color/white"
                         android:textSize="16sp"
                         android:padding="8dp" />
@@ -408,46 +408,46 @@
                             android:id="@+id/rbCustomWallpaper"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Custom Wallpaper" />
+                            android:text="@string/custom_wallpaper" />
 
                         <Button
                             android:id="@+id/selectWallpaperButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Select Wallpaper"
+                            android:text="@string/select_wallpaper"
                             android:visibility="gone" />
 
                         <RadioButton
                             android:id="@+id/rbNoAnimation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="No Background" />
+                            android:text="@string/no_background" />
 
 
                         <RadioButton
                             android:id="@+id/rbDefaultAnimation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Wave" />
+                            android:text="@string/wave" />
 
                         <RadioButton
                             android:id="@+id/rbGearAnimation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Gear" />
+                            android:text="@string/gear" />
 
                         <RadioButton
                             android:id="@+id/rbQuiltAnimation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Quilt" />
+                            android:text="@string/quilt" />
 
 
                         <RadioButton
                             android:id="@+id/rbFolderAnimation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Folder" />
+                            android:text="@string/folder" />
 
                     </RadioGroup>
 
@@ -455,13 +455,13 @@
                         android:id="@+id/selectPngFolderButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Select Animation (*.png) Folder" />
+                        android:text="@string/select_animation_folder" />
 
                     <TextView
                         android:id="@+id/parallaxModeLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Parallax Mode:"
+                        android:text="@string/parallax_mode_label"
                         android:textColor="@android:color/white"
                         android:textSize="16sp"
                         android:padding="8dp" />
@@ -477,33 +477,33 @@
                             android:id="@+id/rbParallaxOff"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Off" />
+                            android:text="@string/off" />
 
                         <RadioButton
                             android:id="@+id/rbParallaxSlow"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Slow" />
+                            android:text="@string/slow" />
 
                         <RadioButton
                             android:id="@+id/rbParallaxDefault"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Default"
+                            android:text="@string/default_label"
                             android:checked="true" />
 
                         <RadioButton
                             android:id="@+id/rbParallaxFast"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Fast" />
+                            android:text="@string/fast" />
                     </RadioGroup>
 
                     <TextView
                         android:id="@+id/frameSpeedLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Animation Speed:"
+                        android:text="@string/animation_speed_label"
                         android:textColor="@android:color/white"
                         android:textSize="16sp"
                         android:padding="8dp" />

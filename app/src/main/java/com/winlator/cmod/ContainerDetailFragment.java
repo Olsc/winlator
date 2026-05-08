@@ -698,6 +698,8 @@ public class ContainerDetailFragment extends Fragment {
                         }
                         preloaderDialog.close();
                         getActivity().onBackPressed();
+                    }, (progress) -> {
+                        preloaderDialog.show(getString(R.string.creating_container) + " (" + progress + "%)");
                     });
                 }
             } catch (JSONException e) {

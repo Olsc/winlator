@@ -3,25 +3,25 @@
     <color name="seekbar_blue">#2196F3</color>
     <color name="seekbar_blue_track">#332196F3</color>
 
-    <!-- Light Theme Colors -->
-    <color name="window_background_color">#fafafa</color>
-    <color name="colorPrimary">#2F0B81</color>
-    <color name="colorPrimaryDark">#350D66</color>
-    <color name="colorAccent">#0288d1</color>
-    <color name="black">#000000</color>
+    <!-- Light Theme Colors (Premium Indigo) -->
+    <color name="window_background_color">#F5F5F7</color>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="black">#1C1C1E</color>
 
-    <!-- Dark Theme Colors -->
+    <!-- Dark Theme Colors (Deep Grey) -->
     <color name="window_background_color_dark">#121212</color>
-    <color name="colorPrimaryDarkMode">#390E7A</color>
-    <color name="colorPrimaryDarkModeDark">#43197C</color>
-    <color name="colorAccentDark">#80d8ff</color>
-    <color name="white">#ffffff</color>
+    <color name="colorPrimaryDarkMode">#7986CB</color>
+    <color name="colorPrimaryDarkModeDark">#3F51B5</color>
+    <color name="colorAccentDark">#FF80AB</color>
+    <color name="white">#E1E1E1</color>
 
     <!-- Additional Colors for Dark Mode -->
-    <color name="combo_box_dark">#303030</color>
-    <color name="content_dialog_background_dark">#424242</color>
-    <color name="button_neutral_dark">#37474f</color>
-    <color name="button_positive_dark">#1e88e5</color>
+    <color name="combo_box_dark">#2C2C2E</color>
+    <color name="content_dialog_background_dark">#1E1E1E</color>
+    <color name="button_neutral_dark">#3A3A3C</color>
+    <color name="button_positive_dark">#3F51B5</color>
 
     <color name="abc_decor_view_status_guard">#ff000000</color>
     <color name="abc_decor_view_status_guard_light">#ffffffff</color>

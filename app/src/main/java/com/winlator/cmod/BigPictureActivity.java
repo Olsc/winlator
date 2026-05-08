@@ -442,7 +442,7 @@ public class BigPictureActivity extends AppCompatActivity {
             playDefaultMp3FromAssets();
 
             // Provide feedback to the user
-            Toast.makeText(this, "MP3 reset to default", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.mp3_reset_success, Toast.LENGTH_SHORT).show();
         });
 
 
@@ -526,7 +526,7 @@ public class BigPictureActivity extends AppCompatActivity {
                     editor.apply();
                 } else {
                     // Show an error message if the URL is invalid
-                    youtubeUrlInput.setError("Invalid YouTube URL");
+                    youtubeUrlInput.setError(getString(R.string.invalid_youtube_url));
                 }
             } else {
                 // Load the default video if no URL is entered
@@ -675,9 +675,9 @@ public class BigPictureActivity extends AppCompatActivity {
 
     private void updateBgMusicButtonText(Button button, boolean isEnabled) {
         if (isEnabled) {
-            button.setText("Disable BG Music");
+            button.setText(R.string.disable_bg_music);
         } else {
-            button.setText("Enable BG Music");
+            button.setText(R.string.enable_bg_music);
         }
     }
 
@@ -826,8 +826,8 @@ public class BigPictureActivity extends AppCompatActivity {
     private void showCoverArtOptionsDialog() {
         // Create an AlertDialog to show the options
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Cover Art Options")
-                .setItems(new CharSequence[]{"Remove Custom Cover Art", "Upload New Cover Art"}, (dialog, which) -> {
+                .setTitle(R.string.cover_art_options)
+                .setItems(new CharSequence[]{getString(R.string.remove_custom_cover_art), getString(R.string.upload_new_cover_art)}, (dialog, which) -> {
                     switch (which) {
                         case 0: // Remove Custom Cover Art
                             removeCustomCoverArt();
@@ -837,7 +837,7 @@ public class BigPictureActivity extends AppCompatActivity {
                             break;
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 
@@ -970,19 +970,19 @@ public class BigPictureActivity extends AppCompatActivity {
         SharedPreferences playtimePrefs = getSharedPreferences("playtime_stats", Context.MODE_PRIVATE);
         long totalPlaytime = playtimePrefs.getLong(shortcut.name + "_playtime", 0);
         int playCount = playtimePrefs.getInt(shortcut.name + "_play_count", 0);
-        playCountView.setText("Times Played: " + playCount);
-        playtimeView.setText("Playtime: " + formatPlaytime(totalPlaytime));
+        playCountView.setText(getString(R.string.times_played, playCount));
+        playtimeView.setText(getString(R.string.playtime, formatPlaytime(totalPlaytime)));
 
         // Get the associated container for this shortcut (unchanged)
         Container container = manager.getContainerForShortcut(shortcut);
         String graphicsDriver = shortcut.getExtra("graphicsDriver");
         
-        setTextOrPlaceholder(graphicsDriverView, graphicsDriver, container.getGraphicsDriver());
-        setTextOrPlaceholder(graphicsDriverVersionView, shortcut.getExtra("graphicsDriverConfig"), container.getGraphicsDriverConfig());
-        setTextOrPlaceholder(dxWrapperView, shortcut.getExtra("dxwrapper"), container.getDXWrapper());
-        setTextOrPlaceholder(dxWrapperConfigView, shortcut.getExtra("dxwrapperConfig"), container.getDXWrapperConfig());
-        setTextOrPlaceholder(audioDriverView, shortcut.getExtra("audioDriver"), container.getAudioDriver());
-        setTextOrPlaceholder(box64PresetView, shortcut.getExtra("box64Preset"), container.getBox64Preset());
+        setTextOrPlaceholder(graphicsDriverView, R.string.graphics_driver_label, graphicsDriver, container.getGraphicsDriver());
+        setTextOrPlaceholder(graphicsDriverVersionView, R.string.driver_version_label, shortcut.getExtra("graphicsDriverConfig"), container.getGraphicsDriverConfig());
+        setTextOrPlaceholder(dxWrapperView, R.string.dx_wrapper_label, shortcut.getExtra("dxwrapper"), container.getDXWrapper());
+        setTextOrPlaceholder(dxWrapperConfigView, R.string.dx_config_label, shortcut.getExtra("dxwrapperConfig"), container.getDXWrapperConfig());
+        setTextOrPlaceholder(audioDriverView, R.string.audio_driver_label, shortcut.getExtra("audioDriver"), container.getAudioDriver());
+        setTextOrPlaceholder(box64PresetView, R.string.box64_preset_label, shortcut.getExtra("box64Preset"), container.getBox64Preset());
 
         // Handle cover art loading
         Bitmap coverArt = null;
@@ -1028,24 +1028,26 @@ public class BigPictureActivity extends AppCompatActivity {
     }
 
 
-    private void setTextOrPlaceholder(TextView textView, String shortcutValue, String containerValue) {
-        if (!shortcutValue.isEmpty()) {
-            textView.setText(shortcutValue); // Use the value from the shortcut if available
-        } else if (!containerValue.isEmpty()) {
-            textView.setText(containerValue); // Fallback to the container's value
+    private void setTextOrPlaceholder(TextView textView, int labelResId, String shortcutValue, String containerValue) {
+        String label = getString(labelResId);
+        if (shortcutValue != null && !shortcutValue.isEmpty()) {
+            textView.setText(label + " " + shortcutValue); // Use the value from the shortcut if available
+        } else if (containerValue != null && !containerValue.isEmpty()) {
+            textView.setText(label + " " + containerValue); // Fallback to the container's value
         } else {
-            textView.setText("Not Set"); // Fallback if neither are available
+            textView.setText(label + " " + getString(R.string.not_set)); // Fallback if neither are available
         }
     }
 
 
-    private void setTextFromContainer(TextView textView, String label, String shortcutValue, String containerValue) {
-        if (!shortcutValue.isEmpty()) {
-            textView.setText(label + shortcutValue); // Use the value from the shortcut if available
-        } else if (!containerValue.isEmpty()) {
-            textView.setText(label + containerValue); // Fallback to the container's value
+    private void setTextFromContainer(TextView textView, int labelResId, String shortcutValue, String containerValue) {
+        String label = getString(labelResId);
+        if (shortcutValue != null && !shortcutValue.isEmpty()) {
+            textView.setText(label + " " + shortcutValue); // Use the value from the shortcut if available
+        } else if (containerValue != null && !containerValue.isEmpty()) {
+            textView.setText(label + " " + containerValue); // Fallback to the container's value
         } else {
-            textView.setText(label + "Not Set"); // Fallback if neither are available
+            textView.setText(label + " " + getString(R.string.not_set)); // Fallback if neither are available
         }
     }
 
@@ -1102,7 +1104,7 @@ public class BigPictureActivity extends AppCompatActivity {
             }
 
             uploadText = new TextView(this); // Initialize the uploadText variable
-            uploadText.setText("No suitable cover art found for " + shortcut.name + ". Click the image to upload custom cover art or rename the Shortcut to something SteamGrid can recognize.");
+            uploadText.setText(getString(R.string.no_cover_art_found, shortcut.name));
             uploadText.setTextColor(Color.WHITE);
             uploadText.setTextSize(18);
             uploadText.setPadding(20, 20, 20, 20);
@@ -1170,19 +1172,12 @@ public class BigPictureActivity extends AppCompatActivity {
     }
 
     private void cacheCoverArt(Bitmap coverArt, String shortcutName) {
-        try {
-            File cacheDir = new File(getCacheDir(), "coverArtCache");
-            if (!cacheDir.exists()) {
-                cacheDir.mkdirs();
-            }
-            File coverFile = new File(cacheDir, shortcutName + ".png");
-            FileOutputStream outputStream = new FileOutputStream(coverFile);
-            coverArt.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
-            outputStream.flush();
-            outputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        File cacheDir = new File(getCacheDir(), "coverArtCache");
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs();
         }
+        File coverFile = new File(cacheDir, shortcutName + ".png");
+        FileUtils.saveBitmapToFile(coverArt, coverFile);
     }
 
     private Bitmap loadCachedCoverArt(String shortcutName) {
@@ -1211,10 +1206,7 @@ public class BigPictureActivity extends AppCompatActivity {
                 Bitmap wallpaper = BitmapFactory.decodeStream(inputStream);
                 if (wallpaper != null) {
                     File wallpaperFile = new File(getFilesDir(), "custom_bg.png");
-                    FileOutputStream outputStream = new FileOutputStream(wallpaperFile);
-                    wallpaper.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
-                    outputStream.flush();
-                    outputStream.close();
+                    FileUtils.saveBitmapToFile(wallpaper, wallpaperFile);
 
                     // Save the path to SharedPreferences
                     SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -1223,9 +1215,9 @@ public class BigPictureActivity extends AppCompatActivity {
                     editor.apply();
 
                     // Show dialog for display preference (center, stretch, tile)
-                    String[] displayOptions = {"Center", "Stretch", "Tile"};
+                    String[] displayOptions = {getString(R.string.display_mode_center), getString(R.string.display_mode_stretch), getString(R.string.display_mode_tile)};
                     new AlertDialog.Builder(this)
-                            .setTitle("Select Display Mode")
+                            .setTitle(R.string.select_display_mode)
                             .setItems(displayOptions, (dialog, which) -> {
                                 // Save display mode
                                 editor.putString(WALLPAPER_DISPLAY_PREF_KEY, displayOptions[which].toLowerCase());
@@ -1629,14 +1621,14 @@ public class BigPictureActivity extends AppCompatActivity {
         // 1. DocumentFile from the tree URI
         DocumentFile docFolder = DocumentFile.fromTreeUri(this, folderUri);
         if (docFolder == null || !docFolder.isDirectory()) {
-            Toast.makeText(this, "Invalid folder selected!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.invalid_folder_selected, Toast.LENGTH_SHORT).show();
             return;
         }
 
         // 2. Iterate children
         DocumentFile[] docFiles = docFolder.listFiles();
         if (docFiles == null || docFiles.length == 0) {
-            Toast.makeText(this, "No files in folder!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.no_files_in_folder, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1655,7 +1647,7 @@ public class BigPictureActivity extends AppCompatActivity {
         }
 
         if (bitmaps.isEmpty()) {
-            Toast.makeText(this, "No PNG files found in this folder!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.no_png_found, Toast.LENGTH_SHORT).show();
             return;
         }
 

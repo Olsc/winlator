@@ -16,6 +16,16 @@
         <item name="popupWindowStyle">@style/PopupWindow</item>
         <item name="android:popupMenuStyle">@style/PopupMenu</item>
         <item name="popupMenuStyle">@style/PopupMenu</item>
+
+        <!-- Dynamic Attributes -->
+        <item name="fieldsetLabelTextColor">#bdbdbd</item>
+        <item name="fieldsetLabelBackground">@color/window_background_color</item>
+        <item name="contentDialogBackground">@drawable/content_dialog_background</item>
+        <item name="comboBoxBackground">@drawable/combo_box</item>
+        <item name="editTextBackground">@drawable/edit_text</item>
+        <item name="windowBackgroundColor">@color/window_background_color</item>
+        <item name="buttonNeutralBackground">@drawable/button_neutral</item>
+        <item name="buttonPositiveBackground">@drawable/button_positive</item>
     </style>
 
     <!-- Dark Theme -->
@@ -33,6 +43,16 @@
         <item name="popupWindowStyle">@style/PopupWindow.Dark</item>
         <item name="android:popupMenuStyle">@style/PopupMenu.Dark</item>
         <item name="popupMenuStyle">@style/PopupMenu.Dark</item>
+
+        <!-- Dynamic Attributes -->
+        <item name="fieldsetLabelTextColor">#cccccc</item>
+        <item name="fieldsetLabelBackground">@color/window_background_color_dark</item>
+        <item name="contentDialogBackground">@drawable/content_dialog_background_dark</item>
+        <item name="comboBoxBackground">@drawable/combo_box_dark</item>
+        <item name="editTextBackground">@drawable/edit_text_dark</item>
+        <item name="windowBackgroundColor">@color/window_background_color_dark</item>
+        <item name="buttonNeutralBackground">@drawable/button_neutral</item>
+        <item name="buttonPositiveBackground">@drawable/button_positive</item>
     </style>
 
     <!-- Light Theme Fullscreen -->
@@ -66,8 +86,8 @@
         <item name="android:maxLines">1</item>
         <item name="android:ellipsize">end</item>
         <item name="android:spinnerMode">dropdown</item>
-        <item name="android:background">@drawable/combo_box</item>
-        <item name="android:popupBackground">@drawable/content_dialog_background</item>
+        <item name="android:background">?attr/comboBoxBackground</item>
+        <item name="android:popupBackground">?attr/contentDialogBackground</item>
     </style>
 
     <!-- Dark ComboBox Styles -->
@@ -110,15 +130,13 @@
 
     <style name="ContentDialog" parent="@android:style/Theme.Dialog">
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowFullscreen">true</item>
-        <item name="android:windowBackground">@drawable/content_dialog_background</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.6</item>
     </style>
 
-
-
-    <style name="ContentDialog.Dark" parent="ContentDialog">
-        <item name="android:windowBackground">@drawable/content_dialog_background_dark</item>
-    </style>
+    <style name="ContentDialog.Dark" parent="ContentDialog" />
 
     <!-- EditText Styles -->
     <style name="EditText">
@@ -132,13 +150,12 @@
         <item name="android:paddingBottom">0dp</item>
         <item name="android:maxLines">1</item>
         <item name="android:inputType">text</item>
-        <item name="android:background">@drawable/edit_text</item>
+        <item name="android:background">?attr/editTextBackground</item>
+        <item name="android:textColor">?android:attr/textColorPrimary</item>
+        <item name="android:textColorHint">?android:attr/textColorSecondary</item>
     </style>
 
-    <style name="EditText.Dark" parent="EditText">
-        <item name="android:textColor">#ffffff</item>
-        <item name="android:background">@drawable/edit_text_dark</item>
-    </style>
+    <style name="EditText.Dark" parent="EditText" />
 
     <!-- TextView Styles -->
     <style name="TextView" parent="@android:style/Widget.TextView">
@@ -292,18 +309,15 @@
     <style name="FieldSetLabel">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:background">@color/window_background_color</item>
+        <item name="android:background">?attr/fieldsetLabelBackground</item>
         <item name="android:orientation">vertical</item>
         <item name="android:paddingLeft">4dp</item>
         <item name="android:paddingRight">4dp</item>
         <item name="android:layout_marginLeft">8dp</item>
-        <item name="android:textColor">#bdbdbd</item>
+        <item name="android:textColor">?attr/fieldsetLabelTextColor</item>
     </style>
 
-    <style name="FieldSetLabel.Dark" parent="FieldSetLabel">
-        <item name="android:background">@color/window_background_color_dark</item>
-        <item name="android:textColor">#cccccc</item>
-    </style>
+    <style name="FieldSetLabel.Dark" parent="FieldSetLabel" />
 
     <!-- Table Header Styles -->
     <style name="TableHeadBackground">

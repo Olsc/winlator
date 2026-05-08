@@ -83,8 +83,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             box64Version = shortcut.getExtra("box64Version", shortcut.container.getBox64Version());
         }
 
-        Log.i("BionicProgramLauncherComponent", "Extracting required box64 version: " + box64Version);
         File rootDir = imageFs.getRootDir();
+        File box64File = new File(rootDir, "usr/bin/box64");
+
+        // Check if already extracted and version matches
+        if (box64File.exists() && box64Version.equals(container.getExtra("box64Version"))) {
+            Log.i("BionicProgramLauncherComponent", "Box64 version " + box64Version + " already extracted, skipping.");
+            FileUtils.chmod(box64File, 0755);
+            return;
+        }
+
+        Log.i("BionicProgramLauncherComponent", "Extracting required box64 version: " + box64Version);
 
         // No more version check, just extract directly.
         ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
@@ -99,7 +108,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         container.saveData();
 
         // Set execute permissions.
-        File box64File = new File(rootDir, "usr/bin/box64");
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
         }
@@ -444,17 +452,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Execute the command and capture its output
         try {
             java.lang.Process process = Runtime.getRuntime().exec(command, envVars.toStringArray(), imageFs.getRootDir());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                 BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+                while ((line = errorReader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
             }
-            while ((line = errorReader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-
             process.waitFor();
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());

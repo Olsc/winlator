@@ -44,7 +44,20 @@ add_library(evshim SHARED winlator/evshim.c)
 # This assumes cpp/sdl2 has its own CMakeLists.txt or you list its sources here.
 # Most commonly, SDL2 comes with its own CMake build system.
 # If cpp/sdl2 has a CMakeLists.txt:
-add_subdirectory(sdl2) # This will create an SDL2 target (often named SDL2::SDL2 or just SDL2)
+set(SDL_SHARED ON CACHE BOOL "" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+if(ANDROID)
+  set(SDL_VIDEO ON CACHE BOOL "" FORCE)
+  set(SDL_AUDIO ON CACHE BOOL "" FORCE)
+  set(SDL_HAPTIC ON CACHE BOOL "" FORCE)
+  set(SDL_JOYSTICK ON CACHE BOOL "" FORCE)
+  set(SDL_POWER ON CACHE BOOL "" FORCE)
+  set(SDL_SENSOR ON CACHE BOOL "" FORCE)
+  set(SDL_LOADSO ON CACHE BOOL "" FORCE)
+  set(SDL_DUMMYAUDIO OFF CACHE BOOL "" FORCE)
+  set(SDL_DUMMYVIDEO OFF CACHE BOOL "" FORCE)
+endif()
+add_subdirectory(sdl2)
 
 # If you need to list SDL2 source files manually (less ideal if SDL2 is complex):
 # file(GLOB SDL2_SOURCES "sdl2/*.c" "sdl2/src/*/*.c" ...) # Adjust glob patterns
@@ -59,7 +72,7 @@ target_include_directories(evshim PRIVATE
 
 # ---------- link everything ----------
 target_link_libraries(evshim PRIVATE # Or PUBLIC
-        SDL2            # If add_subdirectory(sdl2) created a target named SDL2
+        SDL2::SDL2
         # Or MySDL2     # If you used add_library(MySDL2 ...)
         # Or SDL2::SDL2 # Common imported target name for modern CMake SDL2
         log
