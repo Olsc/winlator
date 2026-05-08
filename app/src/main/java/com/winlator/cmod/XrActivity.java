@@ -18,6 +18,7 @@ import androidx.preference.PreferenceManager;
 import com.winlator.cmod.R;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.core.AppUtils;
+import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.xserver.Keyboard;
 import com.winlator.cmod.xserver.Pointer;
 import com.winlator.cmod.xserver.XKeycode;
@@ -68,9 +69,17 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         instance = this;
         mouseSpeed = PreferenceManager.getDefaultSharedPreferences(this).getFloat("cursor_speed", 1.0f);
 
-        // Default to immersive 6DOF mode for XR devices
-        isImmersive = true;
+        // Default to Screen mode for XR devices (World Locked)
+        isImmersive = false;
         isSBS = false;
+
+        XServer server = getXServer();
+        if (server != null) {
+            smoothedMouse[0] = server.screenInfo.width / 2.0f;
+            smoothedMouse[1] = server.screenInfo.height / 2.0f;
+        }
+
+        AppUtils.hideSystemUI(this);
 
         EditText text = findViewById(R.id.XRTextInput);
         text.setVisibility(View.VISIBLE);
@@ -209,34 +218,26 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         ControllerButton secondaryPress = primaryController == 1 ? ControllerButton.L_THUMBSTICK_PRESS : ControllerButton.R_THUMBSTICK_PRESS;
 
         try (XLock lock = instance.getXServer().lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.INPUT_DEVICE)) {
-            // Mouse control with hand
-            float f = 0.75f;
-            float meter2px = instance.getXServer().screenInfo.width * 10.0f;
-            float dx = (axes[mouseAxisX.ordinal()] - lastAxes[mouseAxisX.ordinal()]) * meter2px;
-            float dy = (axes[mouseAxisY.ordinal()] - lastAxes[mouseAxisY.ordinal()]) * meter2px;
-            if ((Math.abs(dx) > 300) || (Math.abs(dy) > 300)) {
-                dx = 0;
-                dy = 0;
-            }
+            // Mouse control with thumbstick
+            int mouseXAxis = primaryController == 0 ? ControllerAxis.L_THUMBSTICK_X.ordinal() : ControllerAxis.R_THUMBSTICK_X.ordinal();
+            int mouseYAxis = primaryController == 0 ? ControllerAxis.L_THUMBSTICK_Y.ordinal() : ControllerAxis.R_THUMBSTICK_Y.ordinal();
+            float dx = axes[mouseXAxis] * mouseSpeed * 20.0f;
+            float dy = axes[mouseYAxis] * mouseSpeed * 20.0f;
 
             // Mouse control with head
             Pointer mouse = instance.getXServer().pointer;
             if (isImmersive) {
-                float angle2px = instance.getXServer().screenInfo.width * 0.05f / f;
-                dx = getAngleDiff(lastAxes[ControllerAxis.HMD_YAW.ordinal()], axes[ControllerAxis.HMD_YAW.ordinal()]) * angle2px;
-                dy = getAngleDiff(lastAxes[ControllerAxis.HMD_PITCH.ordinal()], axes[ControllerAxis.HMD_PITCH.ordinal()]) * angle2px;
-                if (Float.isNaN(dy)) {
-                    dy = 0;
-                }
                 smoothedMouse[0] = mouse.getClampedX() + 0.5f;
                 smoothedMouse[1] = mouse.getClampedY() + 0.5f;
             }
 
-            // Mouse smoothing
-            dx *= mouseSpeed;
-            dy *= mouseSpeed;
-            smoothedMouse[0] = smoothedMouse[0] * f + (mouse.getClampedX() + 0.5f + dx) * (1 - f);
-            smoothedMouse[1] = smoothedMouse[1] * f + (mouse.getClampedY() + 0.5f - dy) * (1 - f);
+            // Mouse smoothing and delta update
+            smoothedMouse[0] += dx;
+            smoothedMouse[1] -= dy;
+
+            // Clamp to screen bounds
+            smoothedMouse[0] = Mathf.clamp(smoothedMouse[0], 0, instance.getXServer().screenInfo.width);
+            smoothedMouse[1] = Mathf.clamp(smoothedMouse[1], 0, instance.getXServer().screenInfo.height);
 
             // Mouse "snap turn"
             int snapturn = isImmersive ? 125 : 25;

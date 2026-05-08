@@ -8,7 +8,13 @@ void XrEngineInit(struct XrEngine* engine, void* system, const char* name, int v
 {
     if (engine->Initialized)
         return;
-    memset(engine, 0, sizeof(engine));
+    memset(engine, 0, sizeof(*engine));
+
+    // Set platform flags
+    engine->PlatformFlag[PLATFORM_CONTROLLER_QUEST] = true;
+    engine->PlatformFlag[PLATFORM_EXTENSION_INSTANCE] = true;
+    engine->PlatformFlag[PLATFORM_EXTENSION_PASSTHROUGH] = true;
+    engine->PlatformFlag[PLATFORM_EXTENSION_PERFORMANCE] = true;
 
 #ifdef ANDROID
     PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;

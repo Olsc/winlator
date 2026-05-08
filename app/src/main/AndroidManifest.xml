@@ -36,6 +36,7 @@
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="org.khronos.openxr.permission.OPENXR_SYSTEM" />
 
     <application
         android:label="Winlator Cmod"
@@ -88,12 +89,12 @@
             android:launchMode="singleTask"
             android:resizeableActivity="false"
             android:screenOrientation="landscape"
-            android:process=":vr_process"
             android:configChanges="density|orientation|screenSize|keyboard|keyboardHidden|uiMode"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="com.oculus.intent.category.VR" />
+                <category android:name="com.picovr.type.vr" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -148,10 +149,7 @@
         <meta-data
             android:name="com.samsung.android.multidisplay.keep_process_alive"
             android:value="false"/>
-        <meta-data
-            android:name="android.allow_multiple_resumed_activities"
-            android:value="true" />
-
-
+        <meta-data android:name="pvr.app.type" android:value="vr" />
+        <meta-data android:name="pvr.sdk.version" android:value="2.0" />
     </application>
 </manifest>

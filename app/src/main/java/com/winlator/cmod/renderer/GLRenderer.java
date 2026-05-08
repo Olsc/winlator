@@ -194,6 +194,8 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             XrActivity.getInstance().endFrame();
             XrActivity.updateControllers();
             xServerView.requestRender();
+        } else if (XrActivity.isEnabled(null)) {
+            xServerView.requestRender();
         }
     }
 

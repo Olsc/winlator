@@ -24,7 +24,12 @@ void XrRendererInit(struct XrEngine* engine, struct XrRenderer* renderer)
     {
         XrRendererDestroy(engine, renderer);
     }
-    memset(renderer, 0, sizeof(renderer));
+    memset(renderer, 0, sizeof(struct XrRenderer));
+    renderer->InvertedViewPose[0].orientation.w = 1.0f;
+    renderer->InvertedViewPose[1].orientation.w = 1.0f;
+    renderer->HmdOrientation.x = 0;
+    renderer->HmdOrientation.y = 0;
+    renderer->HmdOrientation.z = 0;
 
     if (engine->PlatformFlag[PLATFORM_EXTENSION_PASSTHROUGH])
     {
@@ -70,10 +75,12 @@ void XrRendererInit(struct XrEngine* engine, struct XrRenderer* renderer)
         XrRendererRecenter(engine, renderer);
     }
 
-    renderer->Projections = (XrView*)(malloc(XrMaxNumEyes * sizeof(XrView)));
-    for (int eye = 0; eye < XrMaxNumEyes; eye++) {
-        memset(&renderer->Projections[eye], 0, sizeof(XrView));
-        renderer->Projections[eye].type = XR_TYPE_VIEW;
+    renderer->Projections = (XrView*)malloc(sizeof(XrView) * XrMaxNumEyes);
+    for (int i = 0; i < XrMaxNumEyes; i++)
+    {
+        renderer->Projections[i].type = XR_TYPE_VIEW;
+        renderer->Projections[i].next = NULL;
+        renderer->Projections[i].pose.orientation.w = 1.0f;
     }
 
     // Create framebuffers.
@@ -218,7 +225,16 @@ bool XrRendererInitFrame(struct XrEngine* engine, struct XrRenderer* renderer)
         return false;
     }
 
-    XrRendererUpdateStageBounds(engine);
+    XrEngineWaitForFrame(engine);
+
+    XrFrameBeginInfo begin_frame_info = {XR_TYPE_FRAME_BEGIN_INFO, NULL};
+    OXR(xrBeginFrame(engine->Session, &begin_frame_info));
+
+    if (!renderer->SessionVisible)
+    {
+        renderer->LayerCount = 0;
+        return true;
+    }
 
     // Update passthrough
     if (renderer->PassthroughRunning != renderer->ConfigInt[CONFIG_PASSTHROUGH])
@@ -234,48 +250,40 @@ bool XrRendererInitFrame(struct XrEngine* engine, struct XrRenderer* renderer)
         renderer->PassthroughRunning = renderer->ConfigInt[CONFIG_PASSTHROUGH];
     }
 
-    XrEngineWaitForFrame(engine);
-
-    XrViewLocateInfo projection_info = {};
-    projection_info.type = XR_TYPE_VIEW_LOCATE_INFO;
-    projection_info.next = NULL;
+    XrViewLocateInfo projection_info = {XR_TYPE_VIEW_LOCATE_INFO, NULL};
     projection_info.viewConfigurationType = renderer->ViewportConfig.viewConfigurationType;
     projection_info.displayTime = engine->PredictedDisplayTime;
     projection_info.space = engine->CurrentSpace;
 
     XrViewState view_state = {XR_TYPE_VIEW_STATE, NULL};
+    uint32_t projection_count = XrMaxNumEyes;
 
-    uint32_t projection_capacity = XrMaxNumEyes;
-    uint32_t projection_count = projection_capacity;
+    XrResult res = xrLocateViews(engine->Session, &projection_info, &view_state, projection_count,
+                                 &projection_count, renderer->Projections);
 
-    OXR(xrLocateViews(engine->Session, &projection_info, &view_state, projection_capacity,
-                      &projection_count, renderer->Projections));
-
-    // Get the HMD pose, predicted for the middle of the time period during which
-    // the new eye images will be displayed. The number of frames predicted ahead
-    // depends on the pipeline depth of the engine and the synthesis rate.
-    // The better the prediction, the less black will be pulled in at the edges.
-    XrFrameBeginInfo begin_frame_info = {};
-    begin_frame_info.type = XR_TYPE_FRAME_BEGIN_INFO;
-    begin_frame_info.next = NULL;
-    OXR(xrBeginFrame(engine->Session, &begin_frame_info));
-
-    renderer->Fov.angleLeft = 0;
-    renderer->Fov.angleRight = 0;
-    renderer->Fov.angleUp = 0;
-    renderer->Fov.angleDown = 0;
-    for (int eye = 0; eye < XrMaxNumEyes; eye++)
+    if (res == XR_SUCCESS && (view_state.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT))
     {
-        renderer->Fov.angleLeft += renderer->Projections[eye].fov.angleLeft / 2.0f;
-        renderer->Fov.angleRight += renderer->Projections[eye].fov.angleRight / 2.0f;
-        renderer->Fov.angleUp += renderer->Projections[eye].fov.angleUp / 2.0f;
-        renderer->Fov.angleDown += renderer->Projections[eye].fov.angleDown / 2.0f;
-        renderer->InvertedViewPose[eye] = renderer->Projections[eye].pose;
+        renderer->Fov.angleLeft = 0;
+        renderer->Fov.angleRight = 0;
+        renderer->Fov.angleUp = 0;
+        renderer->Fov.angleDown = 0;
+        for (int eye = 0; eye < XrMaxNumEyes; eye++)
+        {
+            renderer->Fov.angleLeft += renderer->Projections[eye].fov.angleLeft / 2.0f;
+            renderer->Fov.angleRight += renderer->Projections[eye].fov.angleRight / 2.0f;
+            renderer->Fov.angleUp += renderer->Projections[eye].fov.angleUp / 2.0f;
+            renderer->Fov.angleDown += renderer->Projections[eye].fov.angleDown / 2.0f;
+            renderer->InvertedViewPose[eye] = renderer->Projections[eye].pose;
+        }
+
+        renderer->HmdOrientation = XrQuaternionfEulerAngles(renderer->InvertedViewPose[0].orientation);
+        renderer->LayerCount = 0;
+    }
+    else
+    {
+        renderer->LayerCount = 0;
     }
 
-    renderer->HmdOrientation = XrQuaternionfEulerAngles(renderer->InvertedViewPose[0].orientation);
-    renderer->LayerCount = 0;
-    memset(renderer->Layers, 0, sizeof(XrCompositorLayer) * XrMaxLayerCount);
     return true;
 }
 
@@ -293,6 +301,22 @@ void XrRendererEndFrame(struct XrRenderer* renderer)
 
 void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer)
 {
+    if (!renderer->SessionActive)
+    {
+        return;
+    }
+
+    if (!renderer->SessionVisible)
+    {
+        XrFrameEndInfo end_frame_info = {XR_TYPE_FRAME_END_INFO, NULL};
+        end_frame_info.type = XR_TYPE_FRAME_END_INFO;
+        end_frame_info.displayTime = engine->PredictedDisplayTime;
+        end_frame_info.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+        end_frame_info.layerCount = 0;
+        OXR(xrEndFrame(engine->Session, &end_frame_info));
+        return;
+    }
+
     int x = 0;
     int y = 0;
     int w = renderer->Framebuffer[0].Width;
@@ -353,13 +377,17 @@ void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer)
     }
     else if ((mode == RENDER_MODE_MONO_SCREEN) || (mode == RENDER_MODE_STEREO_SCREEN))
     {
-        // Flat screen pose
+        // Flat screen pose (World Locked)
         float distance = renderer->ConfigFloat[CONFIG_CANVAS_DISTANCE];
         float menu_pitch = ToRadians(renderer->ConfigFloat[CONFIG_MENU_PITCH]);
         float menu_yaw = ToRadians(renderer->ConfigFloat[CONFIG_MENU_YAW]);
-        XrVector3f pos = {renderer->InvertedViewPose[0].position.x - sinf(menu_yaw) * cosf(menu_pitch) * distance,
-                          renderer->InvertedViewPose[0].position.y - sinf(menu_pitch) * distance,
-                          renderer->InvertedViewPose[0].position.z - cosf(menu_yaw) * cosf(menu_pitch) * distance};
+        
+        // Place the screen at a fixed distance in the reference space (world-locked)
+        // Instead of using renderer->InvertedViewPose[0].position, we use {0,0,0} as origin
+        XrVector3f pos = {-sinf(menu_yaw) * cosf(menu_pitch) * distance,
+                          -sinf(menu_pitch) * distance,
+                          -cosf(menu_yaw) * cosf(menu_pitch) * distance};
+        
         XrVector3f pitch_axis = {1, 0, 0};
         XrVector3f yaw_axis = {0, 1, 0};
         XrQuaternionf pitch = XrQuaternionfCreateFromVectorAngle(pitch_axis, -menu_pitch);
@@ -370,7 +398,7 @@ void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer)
         XrCompositionLayerQuad quad_layer = {};
         quad_layer.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
         quad_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        quad_layer.space = engine->CurrentSpace;
+        quad_layer.space = engine->CurrentSpace; // This is the recentered FakeSpace
         memset(&quad_layer.subImage, 0, sizeof(XrSwapchainSubImage));
         quad_layer.subImage.imageRect.offset.x = x;
         quad_layer.subImage.imageRect.offset.y = y;
@@ -378,7 +406,7 @@ void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer)
         quad_layer.subImage.imageRect.extent.height = h;
         quad_layer.subImage.swapchain = framebuffer->Handle;
         quad_layer.subImage.imageArrayIndex = 0;
-        quad_layer.pose.orientation = XrQuaternionfMultiply(pitch, yaw);
+        quad_layer.pose.orientation = XrQuaternionfMultiply(yaw, pitch);
         quad_layer.pose.position = pos;
         quad_layer.size.width = 4;
         quad_layer.size.height = 4;
@@ -514,6 +542,7 @@ void XrRendererHandleSessionStateChanges(struct XrEngine* engine, struct XrRende
         XrResult result;
         OXR(result = xrBeginSession(engine->Session, &session_begin_info));
         renderer->SessionActive = (result == XR_SUCCESS);
+        if (!renderer->SessionActive) ALOGE("Failed to begin XR session: %d", (int)result);
         ALOGV("Session active = %d", renderer->SessionActive);
 
 #ifdef ANDROID
@@ -540,6 +569,7 @@ void XrRendererHandleSessionStateChanges(struct XrEngine* engine, struct XrRende
                                                   engine->RenderThreadId));
         }
 #endif
+        XrRendererUpdateStageBounds(engine, renderer);
     }
     else if (state == XR_SESSION_STATE_STOPPING)
     {
@@ -587,6 +617,7 @@ void XrRendererHandleXrEvents(struct XrEngine* engine, struct XrRenderer* render
                 break;
             case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
                 XrRendererRecenter(engine, renderer);
+                XrRendererUpdateStageBounds(engine, renderer);
                 break;
             case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
             {
@@ -595,14 +626,38 @@ void XrRendererHandleXrEvents(struct XrEngine* engine, struct XrRenderer* render
                 switch (session_state_changed_event->state)
                 {
                     case XR_SESSION_STATE_FOCUSED:
+                        ALOGV("Session state: FOCUSED");
+                        renderer->SessionVisible = true;
                         renderer->SessionFocused = true;
+                        XrRendererUpdateStageBounds(engine, renderer);
                         break;
                     case XR_SESSION_STATE_VISIBLE:
+                        ALOGV("Session state: VISIBLE");
+                        renderer->SessionVisible = true;
+                        renderer->SessionFocused = false;
+                        break;
+                    case XR_SESSION_STATE_SYNCHRONIZED:
+                        ALOGV("Session state: SYNCHRONIZED");
+                        renderer->SessionVisible = false;
                         renderer->SessionFocused = false;
                         break;
                     case XR_SESSION_STATE_READY:
-                    case XR_SESSION_STATE_STOPPING:
+                        ALOGV("Session state: READY");
+                        renderer->SessionVisible = false;
+                        renderer->SessionFocused = false;
                         XrRendererHandleSessionStateChanges(engine, renderer, session_state_changed_event->state);
+                        break;
+                    case XR_SESSION_STATE_STOPPING:
+                        ALOGV("Session state: STOPPING");
+                        renderer->SessionVisible = false;
+                        renderer->SessionFocused = false;
+                        XrRendererHandleSessionStateChanges(engine, renderer, session_state_changed_event->state);
+                        break;
+                    case XR_SESSION_STATE_LOSS_PENDING:
+                        ALOGV("Session state: LOSS_PENDING");
+                        break;
+                    case XR_SESSION_STATE_EXITING:
+                        ALOGV("Session state: EXITING");
                         break;
                     default:
                         break;
@@ -616,8 +671,13 @@ void XrRendererHandleXrEvents(struct XrEngine* engine, struct XrRenderer* render
     }
 }
 
-void XrRendererUpdateStageBounds(struct XrEngine* engine)
+void XrRendererUpdateStageBounds(struct XrEngine* engine, struct XrRenderer* renderer)
 {
+    if (!renderer->SessionFocused)
+    {
+        return;
+    }
+
     XrExtent2Df stage_bounds = {};
 
     XrResult result;

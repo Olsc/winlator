@@ -40,6 +40,7 @@ enum XrRenderMode
 
 struct XrRenderer {
     bool SessionActive;
+    bool SessionVisible;
     bool SessionFocused;
     bool Initialized;
     bool StageSupported;
@@ -76,4 +77,4 @@ void XrRendererRecenter(struct XrEngine* engine, struct XrRenderer* renderer);
 
 void XrRendererHandleSessionStateChanges(struct XrEngine* engine, struct XrRenderer* renderer, XrSessionState state);
 void XrRendererHandleXrEvents(struct XrEngine* engine, struct XrRenderer* renderer);
-void XrRendererUpdateStageBounds(struct XrEngine* engine);
+void XrRendererUpdateStageBounds(struct XrEngine* engine, struct XrRenderer* renderer);
