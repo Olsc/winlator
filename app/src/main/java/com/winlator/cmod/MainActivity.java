@@ -441,15 +441,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void showAllFilesAccessDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("USB Storage Access")
-                .setMessage("In order to grant access to additional storage devices such as USB storage device, the All Files Access permission must be granted. You can leave this disabled, or you can enable it for USB storage support.")
-                .setPositiveButton("Okay", (dialog, which) -> {
+                .setTitle(R.string.usb_storage_access_title)
+                .setMessage(R.string.usb_storage_access_message)
+                .setPositiveButton(R.string.ok, (dialog, which) -> {
                     Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                     intent.setData(Uri.parse("package:" + getPackageName()));
                     startActivity(intent);
                     allAccessFilesDialogDismissed = true;
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 

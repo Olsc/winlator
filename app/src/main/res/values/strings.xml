@@ -835,4 +835,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="no_png_found">No PNG files found in this folder!</string>
     <string name="clear_favorite">Clear Favorite</string>
     <string name="remove_current_favorite">Do you want to remove the current favorite?</string>
+    <string name="usb_storage_access_title">USB Storage Access</string>
+    <string name="usb_storage_access_message">In order to grant access to additional storage devices such as USB storage device, the All Files Access permission must be granted. You can leave this disabled, or you can enable it for USB storage support.</string>
 </resources>

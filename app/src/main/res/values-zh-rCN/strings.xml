@@ -799,4 +799,6 @@
     <string name="invalid_folder_selected">选择的文件夹无效！</string>
     <string name="no_files_in_folder">文件夹内没有文件！</string>
     <string name="no_png_found">文件夹内未找到 PNG 文件！</string>
+    <string name="usb_storage_access_title">USB存储访问</string>
+    <string name="usb_storage_access_message">为了授予对其他存储设备（如USB存储设备）的访问权限，必须授予所有文件访问权限。您可以将其保持禁用状态，或者将其启用以支持USB存储。</string>
 </resources>
