@@ -1190,7 +1190,7 @@ public class ContainerDetailFragment extends Fragment {
         //The order has to be the same like Container.XrControllerMapping
         int[] ids = {
                 R.id.SButtonA, R.id.SButtonB, R.id.SButtonX, R.id.SButtonY, R.id.SButtonGrip, R.id.SButtonTrigger,
-                R.id.SThumbstickUp, R.id.SThumbstickDown, R.id.SThumbstickLeft, R.id.SThumbstickRight
+                R.id.SThumbstickUp, R.id.SThumbstickDown, R.id.SThumbstickLeft, R.id.SThumbstickRight, R.id.SThumbstickPress
         };
         byte[] controllerMapping = new byte[ids.length];
         for (int i = 0; i < ids.length; i++) {

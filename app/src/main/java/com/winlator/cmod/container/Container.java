@@ -23,7 +23,8 @@ import java.util.Iterator;
 public class Container {
     public enum XrControllerMapping {
         BUTTON_A, BUTTON_B, BUTTON_X, BUTTON_Y, BUTTON_GRIP, BUTTON_TRIGGER,
-        THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT
+        THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT,
+        THUMBSTICK_PRESS
     }
     public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 TU_DEBUG=noconform,sysmem MANGOHUD=0 MANGOHUD_CONFIG=engine_version,gpu_stats=0";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
@@ -202,10 +203,19 @@ public class Container {
     }
 
     public byte getControllerMapping(XrControllerMapping input) {
-        return (byte) controllerMapping.charAt(input.ordinal());
+        if (input == null) return 0;
+        String mapping = this.controllerMapping;
+        int ordinal = input.ordinal();
+        return (mapping != null && ordinal < mapping.length()) ? (byte) mapping.charAt(ordinal) : 0;
     }
 
     public void setControllerMapping(String controllerMapping) {
+        int expectedLength = XrControllerMapping.values().length;
+        if (controllerMapping != null && controllerMapping.length() < expectedLength) {
+            StringBuilder sb = new StringBuilder(controllerMapping);
+            while (sb.length() < expectedLength) sb.append((char)0);
+            controllerMapping = sb.toString();
+        }
         this.controllerMapping = controllerMapping;
     }
 
@@ -564,7 +574,7 @@ public class Container {
                     setPrimaryController(data.getInt(key));
                     break;
                 case "controllerMapping" :
-                    controllerMapping = data.getString(key);
+                    setControllerMapping(data.getString(key));
                     break;
                 case "gstreamerWorkaround" : // Add this case
                     setGstreamerWorkaround(data.getBoolean(key));

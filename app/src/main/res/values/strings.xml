@@ -455,6 +455,7 @@
     <string name="thumbstick_right">Thumbstick right</string>
     <string name="thumbstick_up">Thumbstick up</string>
     <string name="thumbstick_down">Thumbstick down</string>
+    <string name="thumbstick_press">Thumbstick press</string>
     <string name="secondary_executable">Path:</string>
     <string name="enter_secondary_exec_path"> ex: "D:/Games/My Game/My Game.exe"</string>
     <string name="exec_delay">Delayed Execution (seconds):</string>

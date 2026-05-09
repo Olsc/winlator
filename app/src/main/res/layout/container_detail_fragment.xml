@@ -974,6 +974,15 @@
                     style="@style/ComboBox"
                     android:layout_width="match_parent"
                     android:id="@+id/SThumbstickDown" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/thumbstick_press" />
+                <Spinner
+                    style="@style/ComboBox"
+                    android:layout_width="match_parent"
+                    android:id="@+id/SThumbstickPress" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

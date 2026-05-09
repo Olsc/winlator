@@ -90,6 +90,8 @@ struct XrEngine {
 
     bool PlatformFlag[PLATFORM_MAX];
     bool Initialized;
+    bool SessionFocused;
+    bool SessionVisible;
 };
 
 void XrEngineInit(struct XrEngine* engine, void* system, const char* name, int version);

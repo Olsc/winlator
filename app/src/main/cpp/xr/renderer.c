@@ -292,9 +292,11 @@ bool XrRendererInitFrame(struct XrEngine* engine, struct XrRenderer* renderer)
 
     if (!renderer->SessionVisible)
     {
+        engine->SessionVisible = false;
         renderer->LayerCount = 0;
         return true;
     }
+    engine->SessionVisible = true;
 
     // Update passthrough
     if (renderer->PassthroughRunning != renderer->ConfigInt[CONFIG_PASSTHROUGH])
@@ -736,19 +738,19 @@ void XrRendererHandleXrEvents(struct XrEngine* engine, struct XrRenderer* render
                 {
                     case XR_SESSION_STATE_FOCUSED:
                         ALOGV("Session state: FOCUSED");
-                        renderer->SessionVisible = true;
-                        renderer->SessionFocused = true;
+                        engine->SessionVisible = renderer->SessionVisible = true;
+                        engine->SessionFocused = renderer->SessionFocused = true;
                         XrRendererUpdateStageBounds(engine, renderer);
                         break;
                     case XR_SESSION_STATE_VISIBLE:
                         ALOGV("Session state: VISIBLE");
-                        renderer->SessionVisible = true;
-                        renderer->SessionFocused = false;
+                        engine->SessionVisible = renderer->SessionVisible = true;
+                        engine->SessionFocused = renderer->SessionFocused = false;
                         break;
                     case XR_SESSION_STATE_SYNCHRONIZED:
                         ALOGV("Session state: SYNCHRONIZED");
-                        renderer->SessionVisible = false;
-                        renderer->SessionFocused = false;
+                        engine->SessionVisible = renderer->SessionVisible = false;
+                        engine->SessionFocused = renderer->SessionFocused = false;
                         break;
                     case XR_SESSION_STATE_READY:
                         ALOGV("Session state: READY");

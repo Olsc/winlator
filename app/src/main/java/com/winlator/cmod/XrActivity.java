@@ -277,8 +277,8 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
                 smoothedMouse[0] = mouse.getClampedX() + snapturn;
             }
 
-            // Switch immersive/SBS mode
-            if (getButtonClicked(buttons, secondaryPress)) {
+            // System functions (Immersive / SBS toggle)
+            if (getButtonClicked(buttons, secondaryPress) && buttons[secondaryGrip.ordinal()]) {
                 if (buttons[primaryGrip.ordinal()]) {
                     isSBS = !isSBS;
                 }
@@ -306,17 +306,27 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
             System.arraycopy(buttons, 0, lastButtons, 0, buttons.length);
 
             // Update keyboard
-            mapKey(ControllerButton.L_MENU, XKeycode.KEY_ESC.id);
-            mapKey(ControllerButton.R_A, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_A));
-            mapKey(ControllerButton.R_B, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_B));
-            mapKey(ControllerButton.L_X, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_X));
-            mapKey(ControllerButton.L_Y, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_Y));
-            mapKey(secondaryGrip, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_GRIP));
-            mapKey(secondaryTrigger, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_TRIGGER));
-            mapKey(secondaryUp, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_UP));
-            mapKey(secondaryDown, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_DOWN));
-            mapKey(secondaryLeft, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_LEFT));
-            mapKey(secondaryRight, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_RIGHT));
+            mapKey(buttons, ControllerButton.L_MENU, XKeycode.KEY_ESC.id);
+            mapKey(buttons, ControllerButton.R_A, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_A));
+            mapKey(buttons, ControllerButton.R_B, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_B));
+            mapKey(buttons, ControllerButton.L_X, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_X));
+            mapKey(buttons, ControllerButton.L_Y, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_Y));
+            mapKey(buttons, secondaryGrip, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_GRIP));
+            mapKey(buttons, secondaryTrigger, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_TRIGGER));
+            mapKey(buttons, secondaryUp, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_UP));
+            mapKey(buttons, secondaryDown, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_DOWN));
+            mapKey(buttons, secondaryLeft, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_LEFT));
+            mapKey(buttons, secondaryRight, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_RIGHT));
+
+            // Map secondary thumbstick press if grip is NOT held (otherwise it's used for system toggle)
+            if (!buttons[secondaryGrip.ordinal()]) {
+                mapKey(buttons, secondaryPress, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_PRESS));
+            }
+            else {
+                // Ensure key is released if we started holding grip
+                byte thumbPressKey = instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_PRESS);
+                if (thumbPressKey != 0) instance.getXServer().keyboard.setKeyRelease(thumbPressKey);
+            }
         }
     }
 
@@ -405,9 +415,10 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         return buttons[button.ordinal()] && !lastButtons[button.ordinal()];
     }
 
-    private static void mapKey(ControllerButton xrButton, byte xKeycode) {
+    private static void mapKey(boolean[] buttons, ControllerButton xrButton, byte xKeycode) {
+        if (xKeycode == 0) return;
         Keyboard keyboard = instance.getXServer().keyboard;
-        if (lastButtons[xrButton.ordinal()]) {
+        if (buttons[xrButton.ordinal()]) {
             keyboard.setKeyPress(xKeycode, 0);
         } else {
             keyboard.setKeyRelease(xKeycode);

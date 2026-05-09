@@ -751,10 +751,11 @@
     <string name="startup_aggressive">积极启动模式</string>
     <string name="startup_essential">基础启动模式</string>
     <string name="startup_normal">正常启动模式</string>
+    <string name="thumbstick_up">摇杆上</string>
     <string name="thumbstick_down">摇杆下</string>
+    <string name="thumbstick_press">摇杆下压</string>
     <string name="thumbstick_left">摇杆左</string>
     <string name="thumbstick_right">摇杆右</string>
-    <string name="thumbstick_up">摇杆上</string>
     <string name="toggle_orientation">切换屏幕方向</string>
     <string name="unable_to_install_soundfont">无法安装音色库</string>
     <string name="use_secondary_executable">使用辅助可执行文件</string>
