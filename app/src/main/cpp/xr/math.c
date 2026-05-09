@@ -89,33 +89,30 @@ XrVector3f XrQuaternionfEulerAngles(const XrQuaternionf q)
 
 void XrQuaternionfToMatrix4f(const XrQuaternionf* q, float* m)
 {
-    const float ww = q->w * q->w;
-    const float xx = q->x * q->x;
-    const float yy = q->y * q->y;
-    const float zz = q->z * q->z;
+    const float x = q->x;
+    const float y = q->y;
+    const float z = q->z;
+    const float w = q->w;
 
-    float M[4][4];
-    M[0][0] = ww + xx - yy - zz;
-    M[0][1] = 2 * (q->x * q->y - q->w * q->z);
-    M[0][2] = 2 * (q->x * q->z + q->w * q->y);
-    M[0][3] = 0;
+    m[0] = 1.0f - 2.0f * (y * y + z * z);
+    m[1] = 2.0f * (x * y + z * w);
+    m[2] = 2.0f * (x * z - y * w);
+    m[3] = 0.0f;
 
-    M[1][0] = 2 * (q->x * q->y + q->w * q->z);
-    M[1][1] = ww - xx + yy - zz;
-    M[1][2] = 2 * (q->y * q->z - q->w * q->x);
-    M[1][3] = 0;
+    m[4] = 2.0f * (x * y - z * w);
+    m[5] = 1.0f - 2.0f * (x * x + z * z);
+    m[6] = 2.0f * (y * z + x * w);
+    m[7] = 0.0f;
 
-    M[2][0] = 2 * (q->x * q->z - q->w * q->y);
-    M[2][1] = 2 * (q->y * q->z + q->w * q->x);
-    M[2][2] = ww - xx - yy + zz;
-    M[2][3] = 0;
+    m[8] = 2.0f * (x * z + y * w);
+    m[9] = 2.0f * (y * z - x * w);
+    m[10] = 1.0f - 2.0f * (x * x + y * y);
+    m[11] = 0.0f;
 
-    M[3][0] = 0;
-    M[3][1] = 0;
-    M[3][2] = 0;
-    M[3][3] = 1;
-
-    memcpy(m, &M, sizeof(float) * 16);
+    m[12] = 0.0f;
+    m[13] = 0.0f;
+    m[14] = 0.0f;
+    m[15] = 1.0f;
 }
 
 /*
@@ -215,4 +212,65 @@ XrVector4f XrVector4fMultiplyMatrix4f(const float* m, const XrVector4f* v)
     out.z = M[2][0] * v->x + M[2][1] * v->y + M[2][2] * v->z + M[2][3] * v->w;
     out.w = M[3][0] * v->x + M[3][1] * v->y + M[3][2] * v->z + M[3][3] * v->w;
     return out;
+}
+
+void Matrix4f_CreateTranslation(float* m, float x, float y, float z) {
+    memset(m, 0, 16 * sizeof(float));
+    m[0] = m[5] = m[10] = m[15] = 1.0f;
+    m[12] = x; m[13] = y; m[14] = z;
+}
+
+void Matrix4f_Multiply(float* res, const float* a, const float* b) {
+    float tmp[16];
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            tmp[i * 4 + j] = a[0 * 4 + j] * b[i * 4 + 0] +
+                             a[1 * 4 + j] * b[i * 4 + 1] +
+                             a[2 * 4 + j] * b[i * 4 + 2] +
+                             a[3 * 4 + j] * b[i * 4 + 3];
+        }
+    }
+    memcpy(res, tmp, 16 * sizeof(float));
+}
+
+void Matrix4f_Invert(float* res, const float* m) {
+    float inv[16];
+    float det;
+    inv[0] = m[5]  * m[10] * m[15] - m[5]  * m[11] * m[14] - m[9]  * m[6]  * m[15] + m[9]  * m[7]  * m[14] + m[13] * m[6]  * m[11] - m[13] * m[7]  * m[10];
+    inv[4] = -m[4]  * m[10] * m[15] + m[4]  * m[11] * m[14] + m[8]  * m[6]  * m[15] - m[8]  * m[7]  * m[14] - m[12] * m[6]  * m[11] + m[12] * m[7]  * m[10];
+    inv[8] = m[4]  * m[9]  * m[15] - m[4]  * m[11] * m[13] - m[8]  * m[5]  * m[15] + m[8]  * m[7]  * m[13] + m[12] * m[5]  * m[11] - m[12] * m[7]  * m[9];
+    inv[12] = -m[4]  * m[9]  * m[14] + m[4]  * m[10] * m[13] + m[8]  * m[5]  * m[14] - m[8]  * m[6]  * m[13] - m[12] * m[5]  * m[10] + m[12] * m[6]  * m[9];
+    inv[1] = -m[1]  * m[10] * m[15] + m[1]  * m[11] * m[14] + m[9]  * m[2]  * m[15] - m[9]  * m[3]  * m[14] - m[13] * m[2]  * m[11] + m[13] * m[3]  * m[10];
+    inv[5] = m[0]  * m[10] * m[15] - m[0]  * m[11] * m[14] - m[8]  * m[2]  * m[15] + m[8]  * m[3]  * m[14] + m[12] * m[2]  * m[11] - m[12] * m[3]  * m[10];
+    inv[9] = -m[0]  * m[9]  * m[15] + m[0]  * m[11] * m[13] + m[8]  * m[1]  * m[15] - m[8]  * m[3]  * m[13] - m[12] * m[1]  * m[11] + m[12] * m[3]  * m[9];
+    inv[13] = m[0]  * m[9]  * m[14] - m[0]  * m[10] * m[13] - m[8]  * m[1]  * m[14] + m[8]  * m[2]  * m[13] + m[12] * m[1]  * m[10] - m[12] * m[2]  * m[9];
+    inv[2] = m[1]  * m[6]  * m[15] - m[1]  * m[7]  * m[14] - m[5]  * m[2]  * m[15] + m[5]  * m[3]  * m[14] + m[13] * m[2]  * m[7]  - m[13] * m[3]  * m[6];
+    inv[6] = -m[0]  * m[6]  * m[15] + m[0]  * m[7]  * m[14] + m[4]  * m[2]  * m[15] - m[4]  * m[3]  * m[14] - m[12] * m[2]  * m[7]  + m[12] * m[3]  * m[6];
+    inv[10] = m[0]  * m[5]  * m[15] - m[0]  * m[7]  * m[13] - m[4]  * m[1]  * m[15] + m[4]  * m[3]  * m[13] + m[12] * m[1]  * m[7]  - m[12] * m[3]  * m[5];
+    inv[14] = -m[0]  * m[5]  * m[14] + m[0]  * m[6]  * m[13] + m[4]  * m[1]  * m[14] - m[4]  * m[2]  * m[13] - m[12] * m[1]  * m[6]  + m[12] * m[2]  * m[5];
+    inv[3] = -m[1]  * m[6]  * m[11] + m[1]  * m[7]  * m[10] + m[5]  * m[2]  * m[11] - m[5]  * m[3]  * m[10] - m[9]  * m[2]  * m[7]  + m[9]  * m[3]  * m[6];
+    inv[7] = m[0]  * m[6]  * m[11] - m[0]  * m[7]  * m[10] - m[4]  * m[2]  * m[11] + m[4]  * m[3]  * m[10] + m[8]  * m[2]  * m[7]  - m[8]  * m[3]  * m[6];
+    inv[11] = -m[0]  * m[5]  * m[11] + m[0]  * m[7]  * m[9]  + m[4]  * m[1]  * m[11] - m[4]  * m[3]  * m[9]  - m[8]  * m[1]  * m[7]  + m[8]  * m[3]  * m[5];
+    inv[15] = m[0]  * m[5]  * m[10] - m[0]  * m[6]  * m[9]  - m[4]  * m[1]  * m[10] + m[4]  * m[2]  * m[9]  + m[8]  * m[1]  * m[6]  - m[8]  * m[2]  * m[5];
+    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+    if (det == 0) return;
+    det = 1.0f / det;
+    for (int i = 0; i < 16; i++) res[i] = inv[i] * det;
+}
+
+void Matrix4f_CreateProjectionFov(float* m, const XrFovf fov, const float nearZ, const float farZ) {
+    const float tanLeft = tanf(fov.angleLeft);
+    const float tanRight = tanf(fov.angleRight);
+    const float tanDown = tanf(fov.angleDown);
+    const float tanUp = tanf(fov.angleUp);
+    const float width = tanRight - tanLeft;
+    const float height = tanUp - tanDown;
+    memset(m, 0, 16 * sizeof(float));
+    m[0] = 2.0f / width;
+    m[5] = 2.0f / height;
+    m[8] = (tanRight + tanLeft) / width;
+    m[9] = (tanUp + tanDown) / height;
+    m[10] = -(farZ + nearZ) / (farZ - nearZ);
+    m[11] = -1.0f;
+    m[14] = -(2.0f * farZ * nearZ) / (farZ - nearZ);
 }

@@ -40,7 +40,7 @@ void OXRCheckErrors(XrResult result, const char* file, int line);
 
 enum
 {
-  XrMaxLayerCount = 2
+  XrMaxLayerCount = 10
 };
 enum
 {

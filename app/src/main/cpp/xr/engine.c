@@ -11,7 +11,6 @@ void XrEngineInit(struct XrEngine* engine, void* system, const char* name, int v
     memset(engine, 0, sizeof(*engine));
 
     // Set platform flags
-    engine->PlatformFlag[PLATFORM_CONTROLLER_QUEST] = true;
     engine->PlatformFlag[PLATFORM_EXTENSION_INSTANCE] = true;
     engine->PlatformFlag[PLATFORM_EXTENSION_PASSTHROUGH] = true;
     engine->PlatformFlag[PLATFORM_EXTENSION_PERFORMANCE] = true;
@@ -101,6 +100,15 @@ void XrEngineInit(struct XrEngine* engine, void* system, const char* name, int v
           XR_VERSION_MAJOR(instance_properties.runtimeVersion),
           XR_VERSION_MINOR(instance_properties.runtimeVersion),
           XR_VERSION_PATCH(instance_properties.runtimeVersion));
+
+    if (strstr(instance_properties.runtimeName, "PICO") || strstr(instance_properties.runtimeName, "Pico")) {
+        engine->PlatformFlag[PLATFORM_CONTROLLER_PICO] = true;
+        engine->PlatformFlag[PLATFORM_CONTROLLER_QUEST] = false;
+    }
+    else {
+        engine->PlatformFlag[PLATFORM_CONTROLLER_PICO] = false;
+        engine->PlatformFlag[PLATFORM_CONTROLLER_QUEST] = true;
+    }
 
     XrSystemGetInfo system_info;
     memset(&system_info, 0, sizeof(system_info));

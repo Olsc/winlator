@@ -33,14 +33,15 @@ void XrInputInit(struct XrEngine* engine, struct XrInput* input)
     input->HandPoseLeft = XrInputCreateAction(input->ActionSet, XR_ACTION_TYPE_POSE_INPUT, "hand_pose_left", NULL,1, &input->LeftHandPath);
     input->HandPoseRight = XrInputCreateAction(input->ActionSet, XR_ACTION_TYPE_POSE_INPUT, "hand_pose_right", NULL,1, &input->RightHandPath);
 
-    XrPath interactionProfilePath = XR_NULL_PATH;
+    XrPath interactionProfilePath[2] = {XR_NULL_PATH, XR_NULL_PATH};
+    int profileCount = 0;
     if (engine->PlatformFlag[PLATFORM_CONTROLLER_QUEST])
     {
-        OXR(xrStringToPath(engine->Instance, "/interaction_profiles/oculus/touch_controller",&interactionProfilePath));
+        OXR(xrStringToPath(engine->Instance, "/interaction_profiles/oculus/touch_controller", &interactionProfilePath[profileCount++]));
     }
     else if (engine->PlatformFlag[PLATFORM_CONTROLLER_PICO])
     {
-        OXR(xrStringToPath(engine->Instance, "/interaction_profiles/pico/neo3_controller",&interactionProfilePath));
+        OXR(xrStringToPath(engine->Instance, "/interaction_profiles/pico/neo3_controller", &interactionProfilePath[profileCount++]));
     }
 
     // Map bindings
@@ -60,6 +61,8 @@ void XrInputInit(struct XrEngine* engine, struct XrInput* input)
         bindings[curr++] = XrInputGetBinding(instance, input->IndexRight, "/user/hand/right/input/trigger/click");
         bindings[curr++] = XrInputGetBinding(instance, input->ButtonMenu, "/user/hand/left/input/back/click");
         bindings[curr++] = XrInputGetBinding(instance, input->ButtonMenu, "/user/hand/right/input/back/click");
+        bindings[curr++] = XrInputGetBinding(instance, input->HandPoseLeft, "/user/hand/left/input/aim/pose");
+        bindings[curr++] = XrInputGetBinding(instance, input->HandPoseRight, "/user/hand/right/input/aim/pose");
     }
     bindings[curr++] = XrInputGetBinding(instance, input->ButtonX, "/user/hand/left/input/x/click");
     bindings[curr++] = XrInputGetBinding(instance, input->ButtonY, "/user/hand/left/input/y/click");
@@ -76,13 +79,16 @@ void XrInputInit(struct XrEngine* engine, struct XrInput* input)
     bindings[curr++] = XrInputGetBinding(instance, input->HandPoseLeft, "/user/hand/left/input/aim/pose");
     bindings[curr++] = XrInputGetBinding(instance, input->HandPoseRight, "/user/hand/right/input/aim/pose");
 
-    XrInteractionProfileSuggestedBinding suggested_bindings = {};
-    suggested_bindings.type = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING;
-    suggested_bindings.next = NULL;
-    suggested_bindings.interactionProfile = interactionProfilePath;
-    suggested_bindings.suggestedBindings = bindings;
-    suggested_bindings.countSuggestedBindings = curr;
-    OXR(xrSuggestInteractionProfileBindings(engine->Instance, &suggested_bindings));
+    for (int i = 0; i < profileCount; i++)
+    {
+        XrInteractionProfileSuggestedBinding suggested_bindings = {};
+        suggested_bindings.type = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING;
+        suggested_bindings.next = NULL;
+        suggested_bindings.interactionProfile = interactionProfilePath[i];
+        suggested_bindings.suggestedBindings = bindings;
+        suggested_bindings.countSuggestedBindings = curr;
+        OXR(xrSuggestInteractionProfileBindings(engine->Instance, &suggested_bindings));
+    }
 
     // Attach actions
     XrSessionActionSetsAttachInfo attach_info = {};

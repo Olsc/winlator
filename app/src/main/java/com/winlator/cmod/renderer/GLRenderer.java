@@ -174,74 +174,24 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         boolean xrImmersive = false;
         if (XrActivity.isEnabled(null)) {
             xrImmersive = XrActivity.getImmersive();
-            xrFrame = XrActivity.getInstance().beginFrame(xrImmersive, XrActivity.getSBS());
-        }
-
-        // Update the viewport if necessary
-        if (viewportNeedsUpdate && magnifierEnabled) {
-            if (fullscreen) {
-                GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight);
-            }
-            else {
-                GLES20.glViewport(viewTransformation.viewOffsetX, viewTransformation.viewOffsetY, viewTransformation.viewWidth, viewTransformation.viewHeight);
-            }
-            viewportNeedsUpdate = false;
-        }
-
-        // Clear the screen before drawing
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-
-        // Apply basic transformations and draw windows
-        if (magnifierEnabled) {
-            // Apply magnifier transformations if enabled
-            float pointerX = 0;
-            float pointerY = 0;
-            float magnifierZoom = !screenOffsetYRelativeToCursor ? this.magnifierZoom : 1.0f;
-
-            if (magnifierZoom != 1.0f) {
-                pointerX = Mathf.clamp(xServer.pointer.getX() * magnifierZoom - xServer.screenInfo.width * 0.5f, 0, xServer.screenInfo.width * Math.abs(1.0f - magnifierZoom));
-            }
-
-            if (screenOffsetYRelativeToCursor || magnifierZoom != 1.0f) {
-                float scaleY = magnifierZoom != 1.0f ? Math.abs(1.0f - magnifierZoom) : 0.5f;
-                float offsetY = xServer.screenInfo.height * (screenOffsetYRelativeToCursor ? 0.25f : 0.5f);
-                pointerY = Mathf.clamp(xServer.pointer.getY() * magnifierZoom - offsetY, 0, xServer.screenInfo.height * scaleY);
-            }
-
-            XForm.makeTransform(tmpXForm2, -pointerX, -pointerY, magnifierZoom, magnifierZoom, 0);
-        } else {
-            if (!fullscreen) {
-                int pointerY = 0;
-                if (screenOffsetYRelativeToCursor) {
-                    short halfScreenHeight = (short)(xServer.screenInfo.height / 2);
-                    pointerY = Mathf.clamp(xServer.pointer.getY() - halfScreenHeight / 2, 0, halfScreenHeight);
-                }
-
-                XForm.makeTransform(tmpXForm2, viewTransformation.sceneOffsetX, viewTransformation.sceneOffsetY - pointerY, viewTransformation.sceneScaleX, viewTransformation.sceneScaleY, 0);
-
-                GLES20.glEnable(GLES20.GL_SCISSOR_TEST);
-                GLES20.glScissor(viewTransformation.viewOffsetX, viewTransformation.viewOffsetY, viewTransformation.viewWidth, viewTransformation.viewHeight);
-            } else {
-                XForm.identity(tmpXForm2);
-            }
-        }
-
-        // Render windows without effects
-        renderWindows(xrImmersive);
-
-        // Render cursor if enabled
-        if (cursorVisible && !rootWindowDownsized) renderCursor();
-
-        // Disable scissor test if magnifier is disabled and not in fullscreen mode
-        if (!magnifierEnabled && !fullscreen) {
-            GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
-        }
-
-        if (effectComposer.hasEffects()) {
-            effectComposer.render();  // <-- This line applies the effects
+            float aspect = (float)xServer.screenInfo.width / xServer.screenInfo.height;
+            xrFrame = XrActivity.getInstance().beginFrame(xrImmersive, XrActivity.getSBS(), aspect);
         }
 
         if (xrFrame) {
+            // Render Wine windows to the dedicated screen layer
+            XrActivity.getInstance().beginScreen();
+            GLES20.glClearColor(0, 0, 0, 0);
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+            renderWindows(xrImmersive);
+            if (cursorVisible && !rootWindowDownsized) renderCursor();
+            if (effectComposer.hasEffects()) {
+                effectComposer.render();
+            }
+            XrActivity.getInstance().endScreen();
+
+            // Render controllers and rays to eye layers
             for (int eye = 0; eye < 2; eye++) {
                 XrActivity.getInstance().beginEye(eye);
                 GLES20.glClearColor(0, 0, 0, 0);
@@ -249,11 +199,29 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                 renderXRControllers(eye);
                 XrActivity.getInstance().endEye();
             }
+
             XrActivity.getInstance().endFrame();
             XrActivity.updateControllers();
             xServerView.requestRender();
-        } else if (XrActivity.isEnabled(null)) {
-            xServerView.requestRender();
+        } else {
+            // Fallback for non-XR or initialization
+            if (viewportNeedsUpdate && magnifierEnabled) {
+                if (fullscreen) GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight);
+                else GLES20.glViewport(viewTransformation.viewOffsetX, viewTransformation.viewOffsetY, viewTransformation.viewWidth, viewTransformation.viewHeight);
+                viewportNeedsUpdate = false;
+            }
+
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+            renderWindows(xrImmersive);
+            if (cursorVisible && !rootWindowDownsized) renderCursor();
+
+            if (!magnifierEnabled && !fullscreen) GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
+
+            if (effectComposer.hasEffects()) {
+                effectComposer.render();
+            }
+
+            if (XrActivity.isEnabled(null)) xServerView.requestRender();
         }
     }
 

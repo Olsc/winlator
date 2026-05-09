@@ -74,19 +74,16 @@ JNIEXPORT jint JNICALL Java_com_winlator_cmod_XrActivity_getHeight(JNIEnv *env, 
     return h;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_winlator_cmod_XrActivity_beginFrame(JNIEnv *env, jobject obj, jboolean immersive, jboolean sbs) {
-    if (xr_module_engine.RenderThreadId == 0) {
-        xr_module_engine.RenderThreadId = gettid();
-    }
-    if (XrRendererInitFrame(&xr_module_engine, &xr_module_renderer)) {
-        int mode = immersive ? RENDER_MODE_MONO_6DOF : RENDER_MODE_MONO_SCREEN;
-        xr_module_renderer.ConfigFloat[CONFIG_CANVAS_DISTANCE] = immersive ? 3.0f : 5.0f;
-        xr_module_renderer.ConfigInt[CONFIG_PASSTHROUGH] = !immersive;
-        xr_module_renderer.ConfigInt[CONFIG_MODE] = mode;
-        xr_module_renderer.ConfigInt[CONFIG_SBS] = sbs;
-
-        static int last_immersive = -1;
-        if (last_immersive != immersive) {
+JNIEXPORT jboolean JNICALL Java_com_winlator_cmod_XrActivity_beginFrame(JNIEnv* env, jobject obj, jboolean immersive, jboolean sbs, jfloat aspect)
+{
+    static bool last_immersive = false;
+    xr_module_renderer.ConfigInt[CONFIG_MODE] = immersive ? RENDER_MODE_MONO_6DOF : RENDER_MODE_MONO_SCREEN;
+    xr_module_renderer.ConfigInt[CONFIG_SBS] = sbs;
+    xr_module_renderer.ScreenAspectRatio = aspect;
+    if (XrRendererInitFrame(&xr_module_engine, &xr_module_renderer))
+    {
+        if (immersive != last_immersive)
+        {
             XrRendererRecenter(&xr_module_engine, &xr_module_renderer);
             last_immersive = immersive;
         }
@@ -96,16 +93,28 @@ JNIEXPORT jboolean JNICALL Java_com_winlator_cmod_XrActivity_beginFrame(JNIEnv *
     return false;
 }
 
+JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_beginScreen(JNIEnv *env, jobject obj) {
+    XrRendererBeginScreen(&xr_module_renderer);
+}
+
+JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_endScreen(JNIEnv *env, jobject obj) {
+    XrRendererEndScreen(&xr_module_renderer);
+}
+
+JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_bindScreenFramebuffer(JNIEnv *env, jobject obj) {
+    XrRendererBindScreenFramebuffer(&xr_module_renderer);
+}
+
 JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_beginEye(JNIEnv *env, jobject obj, jint eye) {
     XrRendererBeginFrame(&xr_module_renderer, eye);
 }
 
 JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_endEye(JNIEnv *env, jobject obj) {
-    XrRendererEndFrame(&xr_module_renderer);
+    XrRendererEndFrame(&xr_module_renderer, &xr_module_input);
 }
 
 JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_endFrame(JNIEnv *env, jobject obj) {
-    XrRendererFinishFrame(&xr_module_engine, &xr_module_renderer);
+    XrRendererFinishFrame(&xr_module_engine, &xr_module_renderer, &xr_module_input);
 }
 
 JNIEXPORT jfloatArray JNICALL Java_com_winlator_cmod_XrActivity_getAxes(JNIEnv *env, jobject obj) {

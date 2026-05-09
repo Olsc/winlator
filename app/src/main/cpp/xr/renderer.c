@@ -5,6 +5,58 @@
 #include "engine.h"
 #include "math.h"
 #include "renderer.h"
+#include "input.h"
+#include <GLES2/gl2.h>
+
+static const char* rayVertexShader =
+    "attribute vec3 a_Position;\n"
+    "uniform mat4 u_MVP;\n"
+    "void main() {\n"
+    "    gl_Position = u_MVP * vec4(a_Position, 1.0);\n"
+    "}\n";
+
+static const char* rayFragmentShader =
+    "precision mediump float;\n"
+    "void main() {\n"
+    "    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n"
+    "}\n";
+
+static void InitRayShader(struct XrRenderer* renderer) {
+    if (renderer->RayProgram != 0 || renderer->RayMVPLocation == -2) return;
+    
+    GLint status;
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &rayVertexShader, NULL);
+    glCompileShader(vs);
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
+    if (!status) {
+        renderer->RayMVPLocation = -2; // Mark as failed
+        return;
+    }
+
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &rayFragmentShader, NULL);
+    glCompileShader(fs);
+    glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
+    if (!status) {
+        renderer->RayMVPLocation = -2;
+        return;
+    }
+
+    renderer->RayProgram = glCreateProgram();
+    glAttachShader(renderer->RayProgram, vs);
+    glAttachShader(renderer->RayProgram, fs);
+    glLinkProgram(renderer->RayProgram);
+    glGetProgramiv(renderer->RayProgram, GL_LINK_STATUS, &status);
+    if (!status) {
+        renderer->RayProgram = 0;
+        renderer->RayMVPLocation = -2;
+        return;
+    }
+
+    renderer->RayMVPLocation = glGetUniformLocation(renderer->RayProgram, "u_MVP");
+    renderer->RayPosLocation = glGetAttribLocation(renderer->RayProgram, "a_Position");
+}
 
 #define DECL_PFN(pfn) PFN_##pfn pfn = NULL
 #define INIT_PFN(pfn) OXR(xrGetInstanceProcAddr(engine->Instance, #pfn, (PFN_xrVoidFunction*)(&pfn)))
@@ -83,13 +135,7 @@ void XrRendererInit(struct XrEngine* engine, struct XrRenderer* renderer)
         renderer->Projections[i].pose.orientation.w = 1.0f;
     }
 
-    // Create framebuffers.
-    int width = renderer->ViewConfig[0].recommendedImageRectWidth;
-    int height = renderer->ViewConfig[0].recommendedImageRectHeight;
-    for (int i = 0; i < XrMaxNumEyes; i++)
-    {
-        XrFramebufferCreate(&renderer->Framebuffer[i], engine->Session, width, height);
-    }
+    // Create framebuffers later after ViewConfig is populated
 
     if (engine->PlatformFlag[PLATFORM_EXTENSION_PASSTHROUGH])
     {
@@ -108,6 +154,18 @@ void XrRendererInit(struct XrEngine* engine, struct XrRenderer* renderer)
         OXR(xrPassthroughStartFB(renderer->Passthrough));
         OXR(xrPassthroughLayerResumeFB(renderer->PassthroughLayer));
     }
+
+    // Create eye framebuffers.
+    int width = renderer->ViewConfig[0].recommendedImageRectWidth;
+    int height = renderer->ViewConfig[0].recommendedImageRectHeight;
+    for (int i = 0; i < XrMaxNumEyes; i++)
+    {
+        XrFramebufferCreate(&renderer->Framebuffer[i], engine->Session, width, height);
+    }
+
+    // Create screen framebuffer with a fixed 16:9 aspect ratio for the Wine window.
+    XrFramebufferCreate(&renderer->ScreenFramebuffer, engine->Session, 1280, 720);
+
     renderer->Initialized = true;
 }
 
@@ -128,6 +186,7 @@ void XrRendererDestroy(struct XrEngine* engine, struct XrRenderer* renderer)
     {
         XrFramebufferDestroy(&renderer->Framebuffer[i]);
     }
+    XrFramebufferDestroy(&renderer->ScreenFramebuffer);
     free(renderer->Projections);
     renderer->Initialized = false;
 }
@@ -191,7 +250,7 @@ void XrRendererGetResolution(struct XrEngine* engine, struct XrRenderer* rendere
                         renderer->ViewConfig[e] = elements[e];
                     }
                 }
-
+ 
                 free(elements);
             }
             else
@@ -287,19 +346,98 @@ bool XrRendererInitFrame(struct XrEngine* engine, struct XrRenderer* renderer)
     return true;
 }
 
+void XrRendererBeginScreen(struct XrRenderer* renderer)
+{
+    XrFramebufferAcquire(&renderer->ScreenFramebuffer);
+}
+
+void XrRendererEndScreen(struct XrRenderer* renderer)
+{
+    XrFramebufferRelease(&renderer->ScreenFramebuffer);
+}
+
 void XrRendererBeginFrame(struct XrRenderer* renderer, int fbo_index)
 {
     renderer->ConfigInt[CONFIG_CURRENT_FBO] = fbo_index;
     XrFramebufferAcquire(&renderer->Framebuffer[fbo_index]);
 }
 
-void XrRendererEndFrame(struct XrRenderer* renderer)
+void XrRendererEndFrame(struct XrRenderer* renderer, struct XrInput* input)
 {
     int fbo_index = renderer->ConfigInt[CONFIG_CURRENT_FBO];
+
+    // Draw controller rays
+    if (renderer->SessionVisible && renderer->RayMVPLocation != -2) {
+        InitRayShader(renderer);
+        if (renderer->RayProgram != 0) {
+            float projection[16];
+            Matrix4f_CreateProjectionFov(projection, renderer->Projections[fbo_index].fov, 0.1f, 100.0f);
+
+            float view[16];
+            for (int i = 0; i < 16; i++) view[i] = (i % 5 == 0) ? 1.0f : 0.0f; // Identity
+
+            float eyeMatrix[16];
+            XrQuaternionfToMatrix4f(&renderer->Projections[fbo_index].pose.orientation, eyeMatrix);
+            eyeMatrix[12] = renderer->Projections[fbo_index].pose.position.x;
+            eyeMatrix[13] = renderer->Projections[fbo_index].pose.position.y;
+            eyeMatrix[14] = renderer->Projections[fbo_index].pose.position.z;
+            Matrix4f_Invert(view, eyeMatrix);
+
+            float vp[16];
+            Matrix4f_Multiply(vp, projection, view);
+
+            // Save current GL state
+            GLint prevProgram, prevBuffer, prevViewport[4];
+            glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
+            glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevBuffer);
+            glGetIntegerv(GL_VIEWPORT, prevViewport);
+            GLboolean prevDepthTest = glIsEnabled(GL_DEPTH_TEST);
+            GLboolean prevBlend = glIsEnabled(GL_BLEND);
+
+            glUseProgram(renderer->RayProgram);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glDisable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND);
+            glViewport(0, 0, renderer->Framebuffer[fbo_index].Width, renderer->Framebuffer[fbo_index].Height);
+
+            for (int i = 0; i < 2; i++) {
+                XrPosef pose = XrInputGetPose(input, i);
+                if (pose.orientation.w == 0 && pose.orientation.x == 0) continue; // Skip invalid poses
+
+                float model[16];
+                XrQuaternionfToMatrix4f(&pose.orientation, model);
+                model[12] = pose.position.x;
+                model[13] = pose.position.y;
+                model[14] = pose.position.z;
+
+                float mvp[16];
+                Matrix4f_Multiply(mvp, vp, model);
+                glUniformMatrix4fv(renderer->RayMVPLocation, 1, GL_FALSE, mvp);
+
+                float vertices[] = {
+                    0, 0, 0,
+                    0, 0, -5.0f // 5 meters long
+                };
+                glEnableVertexAttribArray(renderer->RayPosLocation);
+                glVertexAttribPointer(renderer->RayPosLocation, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+                glLineWidth(5.0f);
+                glDrawArrays(GL_LINES, 0, 2);
+                glDisableVertexAttribArray(renderer->RayPosLocation);
+            }
+
+            // Restore GL state
+            glUseProgram(prevProgram);
+            glBindBuffer(GL_ARRAY_BUFFER, prevBuffer);
+            glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+            if (prevDepthTest) glEnable(GL_DEPTH_TEST);
+            if (prevBlend) glEnable(GL_BLEND);
+        }
+    }
+
     XrFramebufferRelease(&renderer->Framebuffer[fbo_index]);
 }
 
-void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer)
+void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer, struct XrInput* input)
 {
     if (!renderer->SessionActive)
     {
@@ -328,115 +466,77 @@ void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer)
 
     int mode = renderer->ConfigInt[CONFIG_MODE];
     XrCompositionLayerProjectionView projection_layer_elements[2] = {};
-    if ((mode == RENDER_MODE_MONO_6DOF) || (mode == RENDER_MODE_STEREO_6DOF))
+    
+    // Add Projection Layer (3D controllers/rays)
+    renderer->ConfigFloat[CONFIG_MENU_YAW] = renderer->HmdOrientation.y;
+    for (int eye = 0; eye < XrMaxNumEyes; eye++)
     {
-        renderer->ConfigFloat[CONFIG_MENU_YAW] = renderer->HmdOrientation.y;
-
-        for (int eye = 0; eye < XrMaxNumEyes; eye++)
-        {
-            struct XrFramebuffer* framebuffer = &renderer->Framebuffer[0];
-            XrPosef pose = renderer->InvertedViewPose[0];
-            if (renderer->ConfigInt[CONFIG_SBS] && (eye == 1))
-            {
-                x += w;
-            }
-            else if (mode != RENDER_MODE_MONO_6DOF)
-            {
-                framebuffer = &renderer->Framebuffer[eye];
-                pose = renderer->InvertedViewPose[eye];
-            }
-;
-            XrVector3f roll_axis = {0, 0, 1};
-            XrVector3f rotation = XrQuaternionfEulerAngles(pose.orientation);
-            XrQuaternionf invRoll = XrQuaternionfCreateFromVectorAngle(roll_axis, ToRadians(rotation.z));
-            pose.orientation = XrQuaternionfMultiply(pose.orientation, invRoll);
-
-            memset(&projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
-            projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-            projection_layer_elements[eye].pose = pose;
-            projection_layer_elements[eye].fov = renderer->Fov;
-
-            memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
-            projection_layer_elements[eye].subImage.swapchain = framebuffer->Handle;
-            projection_layer_elements[eye].subImage.imageRect.offset.x = x;
-            projection_layer_elements[eye].subImage.imageRect.offset.y = y;
-            projection_layer_elements[eye].subImage.imageRect.extent.width = w;
-            projection_layer_elements[eye].subImage.imageRect.extent.height = h;
-            projection_layer_elements[eye].subImage.imageArrayIndex = 0;
-        }
-
-        XrCompositionLayerProjection projection_layer = {};
-        projection_layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
-        projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        projection_layer.layerFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
-        projection_layer.space = engine->CurrentSpace;
-        projection_layer.viewCount = XrMaxNumEyes;
-        projection_layer.views = projection_layer_elements;
-
-        renderer->Layers[renderer->LayerCount++].projection = projection_layer;
-    }
-    else if ((mode == RENDER_MODE_MONO_SCREEN) || (mode == RENDER_MODE_STEREO_SCREEN))
-    {
-        // Flat screen pose (World Locked)
-        float distance = renderer->ConfigFloat[CONFIG_CANVAS_DISTANCE];
-        float menu_pitch = ToRadians(renderer->ConfigFloat[CONFIG_MENU_PITCH]);
-        float menu_yaw = ToRadians(renderer->ConfigFloat[CONFIG_MENU_YAW]);
-        
-        // Place the screen at a fixed distance in the reference space (world-locked)
-        // Instead of using renderer->InvertedViewPose[0].position, we use {0,0,0} as origin
-        XrVector3f pos = {-sinf(menu_yaw) * cosf(menu_pitch) * distance,
-                          -sinf(menu_pitch) * distance,
-                          -cosf(menu_yaw) * cosf(menu_pitch) * distance};
-        
-        XrVector3f pitch_axis = {1, 0, 0};
-        XrVector3f yaw_axis = {0, 1, 0};
-        XrQuaternionf pitch = XrQuaternionfCreateFromVectorAngle(pitch_axis, -menu_pitch);
-        XrQuaternionf yaw = XrQuaternionfCreateFromVectorAngle(yaw_axis, menu_yaw);
-
-        // Setup quad layer
+        int eye_x = 0;
         struct XrFramebuffer* framebuffer = &renderer->Framebuffer[0];
+        XrPosef pose = renderer->InvertedViewPose[0];
+
+        if (renderer->ConfigInt[CONFIG_SBS]) {
+            if (eye == 1) eye_x = w;
+        } else if (mode != RENDER_MODE_MONO_SCREEN && mode != RENDER_MODE_MONO_6DOF) {
+            framebuffer = &renderer->Framebuffer[eye];
+            pose = renderer->InvertedViewPose[eye];
+        }
+        
+        XrVector3f roll_axis = {0, 0, 1};
+        XrVector3f rotation = XrQuaternionfEulerAngles(pose.orientation);
+        XrQuaternionf invRoll = XrQuaternionfCreateFromVectorAngle(roll_axis, ToRadians(rotation.z));
+        pose.orientation = XrQuaternionfMultiply(pose.orientation, invRoll);
+
+        memset(&projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
+        projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+        projection_layer_elements[eye].pose = pose;
+        projection_layer_elements[eye].fov = renderer->Projections[eye].fov;
+
+        memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
+        projection_layer_elements[eye].subImage.swapchain = framebuffer->Handle;
+        projection_layer_elements[eye].subImage.imageRect.offset.x = eye_x;
+        projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
+        projection_layer_elements[eye].subImage.imageRect.extent.width = w;
+        projection_layer_elements[eye].subImage.imageRect.extent.height = h;
+        projection_layer_elements[eye].subImage.imageArrayIndex = 0;
+    }
+
+    XrCompositionLayerProjection projection_layer = {};
+    projection_layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
+    projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    projection_layer.space = engine->CurrentSpace;
+    projection_layer.viewCount = XrMaxNumEyes;
+    projection_layer.views = projection_layer_elements;
+    renderer->Layers[renderer->LayerCount++].projection = projection_layer;
+
+    // Add Quad Layer (Wine Screen) for Screen modes
+    if ((mode == RENDER_MODE_MONO_SCREEN) || (mode == RENDER_MODE_STEREO_SCREEN))
+    {
+        float distance = 2.0f; // Fixed distance of 2 meters as requested
+        // Use the captured height from the last recenter to ensure the window is at eye level and level with gravity.
+        XrVector3f pos = {0, renderer->RecenterHeight, -distance};
+        
         XrCompositionLayerQuad quad_layer = {};
         quad_layer.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
         quad_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        quad_layer.space = engine->CurrentSpace; // This is the recentered FakeSpace
+        quad_layer.space = engine->FakeSpace; // Use FakeSpace for guaranteed level orientation
         memset(&quad_layer.subImage, 0, sizeof(XrSwapchainSubImage));
-        quad_layer.subImage.imageRect.offset.x = x;
-        quad_layer.subImage.imageRect.offset.y = y;
-        quad_layer.subImage.imageRect.extent.width = w;
-        quad_layer.subImage.imageRect.extent.height = h;
-        quad_layer.subImage.swapchain = framebuffer->Handle;
-        quad_layer.subImage.imageArrayIndex = 0;
-        quad_layer.pose.orientation = XrQuaternionfMultiply(yaw, pitch);
+        quad_layer.subImage.imageRect.offset.x = 0;
+        quad_layer.subImage.imageRect.offset.y = 0;
+        quad_layer.subImage.imageRect.extent.width = renderer->ScreenFramebuffer.Width;
+        quad_layer.subImage.imageRect.extent.height = renderer->ScreenFramebuffer.Height;
+        quad_layer.subImage.swapchain = renderer->ScreenFramebuffer.Handle;
+        
+        // Orientation is identity (facing forward in the recentered space)
+        quad_layer.pose.orientation.w = 1.0f;
         quad_layer.pose.position = pos;
-        quad_layer.size.width = 4;
-        quad_layer.size.height = 4;
+        
+        // Use the aspect ratio passed from Java (XServer resolution)
+        quad_layer.size.width = 4.0f;
+        quad_layer.size.height = 4.0f / renderer->ScreenAspectRatio;
 
-        // Build the cylinder layer
-        if (renderer->ConfigInt[CONFIG_SBS])
-        {
-            quad_layer.eyeVisibility = XR_EYE_VISIBILITY_LEFT;
-            renderer->Layers[renderer->LayerCount++].quad = quad_layer;
-            quad_layer.eyeVisibility = XR_EYE_VISIBILITY_RIGHT;
-            quad_layer.subImage.imageRect.offset.x = w;
-            renderer->Layers[renderer->LayerCount++].quad = quad_layer;
-        }
-        else if (mode == RENDER_MODE_MONO_SCREEN)
-        {
-            quad_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-            renderer->Layers[renderer->LayerCount++].quad = quad_layer;
-        }
-        else
-        {
-            quad_layer.eyeVisibility = XR_EYE_VISIBILITY_LEFT;
-            renderer->Layers[renderer->LayerCount++].quad = quad_layer;
-            quad_layer.eyeVisibility = XR_EYE_VISIBILITY_RIGHT;
-            quad_layer.subImage.swapchain = renderer->Framebuffer[1].Handle;
-            renderer->Layers[renderer->LayerCount++].quad = quad_layer;
-        }
-    }
-    else
-    {
-        assert(false);
+        quad_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+        renderer->Layers[renderer->LayerCount++].quad = quad_layer;
     }
 
     // Compose the layers for this frame.
@@ -449,7 +549,7 @@ void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer)
     XrFrameEndInfo end_frame_info = {};
     end_frame_info.type = XR_TYPE_FRAME_END_INFO;
     end_frame_info.displayTime = engine->PredictedDisplayTime;
-    end_frame_info.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+    end_frame_info.environmentBlendMode = renderer->PassthroughRunning ? XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND : XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
     end_frame_info.layerCount = renderer->LayerCount;
     end_frame_info.layers = layers;
     OXR(xrEndFrame(engine->Session, &end_frame_info));
@@ -461,6 +561,13 @@ void XrRendererBindFramebuffer(struct XrRenderer* renderer)
         return;
     int fbo_index = renderer->ConfigInt[CONFIG_CURRENT_FBO];
     XrFramebufferSetCurrent(&renderer->Framebuffer[fbo_index]);
+}
+
+void XrRendererBindScreenFramebuffer(struct XrRenderer* renderer)
+{
+    if (!renderer->Initialized)
+        return;
+    XrFramebufferSetCurrent(&renderer->ScreenFramebuffer);
 }
 
 
@@ -477,6 +584,7 @@ void XrRendererRecenter(struct XrEngine* engine, struct XrRenderer* renderer)
         OXR(xrLocateSpace(engine->HeadSpace, engine->CurrentSpace,
                           engine->PredictedDisplayTime, &loc));
         renderer->HmdOrientation = XrQuaternionfEulerAngles(loc.pose.orientation);
+        renderer->RecenterHeight = loc.pose.position.y;
 
         renderer->ConfigFloat[CONFIG_RECENTER_YAW] += renderer->HmdOrientation.y;
         float renceter_yaw = ToRadians(renderer->ConfigFloat[CONFIG_RECENTER_YAW]);

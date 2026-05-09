@@ -7,3 +7,5 @@
 /captures
 .externalNativeBuild
 .cxx
+
+OpenXR_Native_SDK

@@ -3,6 +3,8 @@
 #include "engine.h"
 #include "framebuffer.h"
 
+struct XrInput;
+
 enum XrConfigFloat
 {
     // 2D canvas positioning
@@ -48,6 +50,7 @@ struct XrRenderer {
     int ConfigInt[CONFIG_INT_MAX];
 
     struct XrFramebuffer Framebuffer[XrMaxNumEyes];
+    struct XrFramebuffer ScreenFramebuffer;
 
     int LayerCount;
     XrCompositorLayer Layers[XrMaxLayerCount];
@@ -56,11 +59,17 @@ struct XrRenderer {
     bool PassthroughRunning;
     XrViewConfigurationProperties ViewportConfig;
     XrViewConfigurationView ViewConfig[XrMaxNumEyes];
+    float ScreenAspectRatio;
+    float RecenterHeight;
 
     XrFovf Fov;
     XrView* Projections;
     XrPosef InvertedViewPose[2];
     XrVector3f HmdOrientation;
+
+    unsigned int RayProgram;
+    int RayMVPLocation;
+    int RayPosLocation;
 };
 
 void XrRendererInit(struct XrEngine* engine, struct XrRenderer* renderer);
@@ -69,10 +78,13 @@ void XrRendererGetResolution(struct XrEngine* engine, struct XrRenderer* rendere
 
 bool XrRendererInitFrame(struct XrEngine* engine, struct XrRenderer* renderer);
 void XrRendererBeginFrame(struct XrRenderer* renderer, int fbo_index);
-void XrRendererEndFrame(struct XrRenderer* renderer);
-void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer);
+void XrRendererEndFrame(struct XrRenderer* renderer, struct XrInput* input);
+void XrRendererBeginScreen(struct XrRenderer* renderer);
+void XrRendererEndScreen(struct XrRenderer* renderer);
+void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer, struct XrInput* input);
 
 void XrRendererBindFramebuffer(struct XrRenderer* renderer);
+void XrRendererBindScreenFramebuffer(struct XrRenderer* renderer);
 void XrRendererRecenter(struct XrEngine* engine, struct XrRenderer* renderer);
 
 void XrRendererHandleSessionStateChanges(struct XrEngine* engine, struct XrRenderer* renderer, XrSessionState state);

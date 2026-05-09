@@ -24,3 +24,8 @@ XrVector3f XrVector3fGetAnglesFromVectors(XrVector3f forward, XrVector3f right, 
 XrVector3f XrVector3fNormalized(const XrVector3f v);
 XrVector3f XrVector3fScalarMultiply(const XrVector3f v, float scale);
 XrVector4f XrVector4fMultiplyMatrix4f(const float* m, const XrVector4f* v);
+
+void Matrix4f_CreateTranslation(float* m, float x, float y, float z);
+void Matrix4f_Multiply(float* res, const float* a, const float* b);
+void Matrix4f_Invert(float* res, const float* m);
+void Matrix4f_CreateProjectionFov(float* m, const XrFovf fov, const float nearZ, const float farZ);

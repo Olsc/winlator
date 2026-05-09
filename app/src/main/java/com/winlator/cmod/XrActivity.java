@@ -248,16 +248,6 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
                 smoothedMouse[0] = mouse.getClampedX() + snapturn;
             }
 
-            // Set mouse status
-            mouse.setPosition((int) smoothedMouse[0], (int) smoothedMouse[1]);
-            mouse.setButton(Pointer.Button.BUTTON_LEFT, buttons[primaryTrigger.ordinal()]);
-            mouse.setButton(Pointer.Button.BUTTON_RIGHT, buttons[primaryGrip.ordinal()]);
-            mouse.setButton(Pointer.Button.BUTTON_SCROLL_UP, buttons[primaryUp.ordinal()]);
-            mouse.setButton(Pointer.Button.BUTTON_SCROLL_DOWN, buttons[primaryDown.ordinal()]);
-
-            // Ray interaction
-            updateRayInteraction(buttons);
-
             // Switch immersive/SBS mode
             if (getButtonClicked(buttons, secondaryPress)) {
                 if (buttons[primaryGrip.ordinal()]) {
@@ -267,6 +257,9 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
                     isImmersive = !isImmersive;
                 }
             }
+
+            // Ray interaction (Only for Right Hand)
+            updateRayInteraction(buttons, primaryTrigger, primaryGrip, primaryUp, primaryDown);
 
             // Show system keyboard
             if (getButtonClicked(buttons, primaryPress)) {
@@ -298,22 +291,24 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         }
     }
 
-    private static void updateRayInteraction(boolean[] buttons) {
+    private static void updateRayInteraction(boolean[] buttons, ControllerButton primaryTrigger, ControllerButton primaryGrip, ControllerButton primaryUp, ControllerButton primaryDown) {
         float[] poses = instance.getControllerPoses();
-        float distance = 5.0f; // Default canvas distance
+        float distance = 2.0f; // Set distance to 2 meters as requested
         float quadWidth = 4.0f;
-        float quadHeight = quadWidth * (float)instance.getXServer().screenInfo.height / instance.getXServer().screenInfo.width;
+        float quadHeight = quadWidth * (9.0f / 16.0f);
 
-        for (int i = 0; i < 2; i++) {
+        boolean hit = false;
+        // Only use Right Hand (index 1)
+        for (int i = 1; i < 2; i++) {
             float px = poses[i*7], py = poses[i*7+1], pz = poses[i*7+2];
             float qx = poses[i*7+3], qy = poses[i*7+4], qz = poses[i*7+5], qw = poses[i*7+6];
 
             // Ray direction (forward is -Z in OpenXR)
-            float vx = -2 * (qx*qz - qw*qy);
-            float vy = -2 * (qy*qz + qw*qx);
-            float vz = -(1 - 2 * (qx*qx + qy*qy));
+            float vx = 2 * (qx * qz - qw * qy);
+            float vy = 2 * (qy * qz + qw * qx);
+            float vz = -(1 - 2 * (qx * qx + qy * qy));
 
-            if (vz < -0.01f) { // Ray pointing towards the screen
+            if (vz < -0.01f) {
                 float t = (-distance - pz) / vz;
                 if (t > 0) {
                     float hx = px + t * vx;
@@ -327,17 +322,35 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
                         int tx = (int)(u * instance.getXServer().screenInfo.width);
                         int ty = (int)(v * instance.getXServer().screenInfo.height);
                         
-                        // If trigger is pressed, move and click
-                        boolean trigger = (i == 0) ? buttons[ControllerButton.L_TRIGGER.ordinal()] : buttons[ControllerButton.R_TRIGGER.ordinal()];
-                        if (trigger) {
-                            mouse.setPosition(tx, ty);
-                            mouse.setButton(Pointer.Button.BUTTON_LEFT, true);
-                            smoothedMouse[0] = tx;
-                            smoothedMouse[1] = ty;
-                        }
+                        // Apply low-pass filtering to reduce jitter and improve double-click stability
+                        smoothedMouse[0] = smoothedMouse[0] * 0.5f + tx * 0.5f;
+                        smoothedMouse[1] = smoothedMouse[1] * 0.5f + ty * 0.5f;
+                        
+                        boolean trigger = buttons[ControllerButton.R_TRIGGER.ordinal()];
+                        boolean grip = buttons[ControllerButton.R_GRIP.ordinal()];
+                        
+                        // Update mouse position (using smoothed values)
+                        mouse.setPosition((int)smoothedMouse[0], (int)smoothedMouse[1]);
+                        
+                        // Update mouse buttons (Left Click for Trigger, Right Click for Grip)
+                        mouse.setButton(Pointer.Button.BUTTON_LEFT, trigger);
+                        mouse.setButton(Pointer.Button.BUTTON_RIGHT, grip);
+                        
+                        hit = true;
+                        break;
                     }
                 }
             }
+        }
+
+        // Fallback to thumbstick mouse if no ray hit
+        if (!hit) {
+            Pointer mouse = instance.getXServer().pointer;
+            mouse.setPosition((int) smoothedMouse[0], (int) smoothedMouse[1]);
+            mouse.setButton(Pointer.Button.BUTTON_LEFT, buttons[primaryTrigger.ordinal()]);
+            mouse.setButton(Pointer.Button.BUTTON_RIGHT, buttons[primaryGrip.ordinal()]);
+            mouse.setButton(Pointer.Button.BUTTON_SCROLL_UP, buttons[primaryUp.ordinal()]);
+            mouse.setButton(Pointer.Button.BUTTON_SCROLL_DOWN, buttons[primaryDown.ordinal()]);
         }
     }
 
@@ -376,9 +389,12 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
     // Rendering
     public native void init();
     public native void bindFramebuffer();
+    public native void bindScreenFramebuffer();
     public native int getWidth();
     public native int getHeight();
-    public native boolean beginFrame(boolean immersive, boolean sbs);
+    public native boolean beginFrame(boolean immersive, boolean sbs, float aspect);
+    public native void beginScreen();
+    public native void endScreen();
     public native void beginEye(int eye);
     public native void endEye();
     public native void endFrame();
