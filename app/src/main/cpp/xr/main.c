@@ -79,35 +79,32 @@ JNIEXPORT jboolean JNICALL Java_com_winlator_cmod_XrActivity_beginFrame(JNIEnv *
         xr_module_engine.RenderThreadId = gettid();
     }
     if (XrRendererInitFrame(&xr_module_engine, &xr_module_renderer)) {
-
-        // Set render canvas
         int mode = immersive ? RENDER_MODE_MONO_6DOF : RENDER_MODE_MONO_SCREEN;
-        // Use closer distance for immersive mode (better for desktop use)
         xr_module_renderer.ConfigFloat[CONFIG_CANVAS_DISTANCE] = immersive ? 3.0f : 5.0f;
         xr_module_renderer.ConfigInt[CONFIG_PASSTHROUGH] = !immersive;
         xr_module_renderer.ConfigInt[CONFIG_MODE] = mode;
         xr_module_renderer.ConfigInt[CONFIG_SBS] = sbs;
 
-        // Recenter if mode switched
         static int last_immersive = -1;
         if (last_immersive != immersive) {
             XrRendererRecenter(&xr_module_engine, &xr_module_renderer);
             last_immersive = immersive;
         }
-
-        // Update controllers state
         XrInputUpdate(&xr_module_engine, &xr_module_input);
-
-        // Lock framebuffer
-        XrRendererBeginFrame(&xr_module_renderer, 0);
-
         return true;
     }
     return false;
 }
 
-JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_endFrame(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_beginEye(JNIEnv *env, jobject obj, jint eye) {
+    XrRendererBeginFrame(&xr_module_renderer, eye);
+}
+
+JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_endEye(JNIEnv *env, jobject obj) {
     XrRendererEndFrame(&xr_module_renderer);
+}
+
+JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_endFrame(JNIEnv *env, jobject obj) {
     XrRendererFinishFrame(&xr_module_engine, &xr_module_renderer);
 }
 
@@ -184,5 +181,30 @@ JNIEXPORT jbooleanArray JNICALL Java_com_winlator_cmod_XrActivity_getButtons(JNI
     memcpy(values, data, count * sizeof(jboolean));
     jbooleanArray output = (*env)->NewBooleanArray(env, count);
     (*env)->SetBooleanArrayRegion(env, output, (jsize)0, (jsize)count, values);
+    return output;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_winlator_cmod_XrActivity_getControllerPoses(JNIEnv *env, jobject obj) {
+    float data[14]; // 2 controllers * (3 pos + 4 quat)
+    for (int i = 0; i < 2; i++) {
+        XrPosef pose = XrInputGetPose(&xr_module_input, i);
+        data[i * 7 + 0] = pose.position.x;
+        data[i * 7 + 1] = pose.position.y;
+        data[i * 7 + 2] = pose.position.z;
+        data[i * 7 + 3] = pose.orientation.x;
+        data[i * 7 + 4] = pose.orientation.y;
+        data[i * 7 + 5] = pose.orientation.z;
+        data[i * 7 + 6] = pose.orientation.w;
+    }
+    jfloatArray output = (*env)->NewFloatArray(env, 14);
+    (*env)->SetFloatArrayRegion(env, output, 0, 14, data);
+    return output;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_winlator_cmod_XrActivity_getFov(JNIEnv *env, jobject obj, jint eye) {
+    XrFovf fov = xr_module_renderer.Projections[eye].fov;
+    float data[4] = {fov.angleLeft, fov.angleRight, fov.angleUp, fov.angleDown};
+    jfloatArray output = (*env)->NewFloatArray(env, 4);
+    (*env)->SetFloatArrayRegion(env, output, 0, 4, data);
     return output;
 }

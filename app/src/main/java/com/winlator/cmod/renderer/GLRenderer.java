@@ -24,6 +24,10 @@ import com.winlator.cmod.xserver.WindowAttributes;
 import com.winlator.cmod.xserver.WindowManager;
 import com.winlator.cmod.xserver.XLock;
 import com.winlator.cmod.xserver.XServer;
+import android.opengl.Matrix;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 
 import java.util.ArrayList;
 
@@ -55,6 +59,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     public int surfaceHeight;
     private final EffectComposer effectComposer;
 
+    private int xrProgram;
+    private FloatBuffer cubeBuffer;
+    private final float[] modelMatrix = new float[16];
+    private final float[] viewMatrix = new float[16];
+    private final float[] projectionMatrix = new float[16];
+    private final float[] mvpMatrix = new float[16];
+
     public GLRenderer(XServerView xServerView, XServer xServer) {
         this.xServerView = xServerView;
         this.xServer = xServer;
@@ -85,6 +96,48 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+        initXRResources();
+    }
+
+    private void initXRResources() {
+        String vShader = 
+            "uniform mat4 uMVPMatrix;" +
+            "attribute vec4 vPosition;" +
+            "void main() {" +
+            "  gl_Position = uMVPMatrix * vPosition;" +
+            "}";
+        String fShader = 
+            "precision mediump float;" +
+            "uniform vec4 vColor;" +
+            "void main() {" +
+            "  gl_FragColor = vColor;" +
+            "}";
+        xrProgram = createProgram(vShader, fShader);
+
+        float[] cube = {
+            -0.05f, -0.05f, -0.05f,  0.05f, -0.05f, -0.05f,  0.05f,  0.05f, -0.05f, -0.05f,  0.05f, -0.05f,
+            -0.05f, -0.05f,  0.05f,  0.05f, -0.05f,  0.05f,  0.05f,  0.05f,  0.05f, -0.05f,  0.05f,  0.05f
+        };
+        cubeBuffer = ByteBuffer.allocateDirect(cube.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        cubeBuffer.put(cube).position(0);
+    }
+
+    private int createProgram(String vertexCode, String fragmentCode) {
+        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexCode);
+        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentCode);
+        int program = GLES20.glCreateProgram();
+        GLES20.glAttachShader(program, vertexShader);
+        GLES20.glAttachShader(program, fragmentShader);
+        GLES20.glLinkProgram(program);
+        return program;
+    }
+
+    private int loadShader(int type, String shaderCode) {
+        int shader = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(shader, shaderCode);
+        GLES20.glCompileShader(shader);
+        return shader;
     }
 
     @Override
@@ -184,19 +237,111 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
         }
 
-        // Apply all the effects using EffectComposer
         if (effectComposer.hasEffects()) {
             effectComposer.render();  // <-- This line applies the effects
         }
 
-        // Finalize XR frame if supported
         if (xrFrame) {
+            for (int eye = 0; eye < 2; eye++) {
+                XrActivity.getInstance().beginEye(eye);
+                GLES20.glClearColor(0, 0, 0, 0);
+                GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+                renderXRControllers(eye);
+                XrActivity.getInstance().endEye();
+            }
             XrActivity.getInstance().endFrame();
             XrActivity.updateControllers();
             xServerView.requestRender();
         } else if (XrActivity.isEnabled(null)) {
             xServerView.requestRender();
         }
+    }
+
+    private void renderXRControllers(int eye) {
+        XrActivity xr = XrActivity.getInstance();
+        float[] axes = xr.getAxes();
+        float[] poses = xr.getControllerPoses();
+        float[] fov = xr.getFov(eye);
+        float[] proj = createProjectionMatrix(fov);
+        
+        // Calculate View Matrix from HMD pose
+        float hmdX = axes[XrActivity.ControllerAxis.HMD_X.ordinal()];
+        float hmdY = axes[XrActivity.ControllerAxis.HMD_Y.ordinal()];
+        float hmdZ = axes[XrActivity.ControllerAxis.HMD_Z.ordinal()];
+        float hmdPitch = axes[XrActivity.ControllerAxis.HMD_PITCH.ordinal()];
+        float hmdYaw = axes[XrActivity.ControllerAxis.HMD_YAW.ordinal()];
+        float hmdRoll = axes[XrActivity.ControllerAxis.HMD_ROLL.ordinal()];
+
+        Matrix.setIdentityM(viewMatrix, 0);
+        Matrix.rotateM(viewMatrix, 0, -hmdRoll, 0, 0, 1);
+        Matrix.rotateM(viewMatrix, 0, -hmdPitch, 1, 0, 0);
+        Matrix.rotateM(viewMatrix, 0, -hmdYaw, 0, 1, 0);
+        Matrix.translateM(viewMatrix, 0, -hmdX, -hmdY, -hmdZ);
+
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glUseProgram(xrProgram);
+        int mvpHandle = GLES20.glGetUniformLocation(xrProgram, "uMVPMatrix");
+        int posHandle = GLES20.glGetAttribLocation(xrProgram, "vPosition");
+        int colHandle = GLES20.glGetUniformLocation(xrProgram, "vColor");
+
+        GLES20.glEnableVertexAttribArray(posHandle);
+        GLES20.glVertexAttribPointer(posHandle, 3, GLES20.GL_FLOAT, false, 0, cubeBuffer);
+
+        for (int i = 0; i < 2; i++) {
+            float px = poses[i*7], py = poses[i*7+1], pz = poses[i*7+2];
+            float qx = poses[i*7+3], qy = poses[i*7+4], qz = poses[i*7+5], qw = poses[i*7+6];
+
+            // Render Cube (Controller)
+            Matrix.setIdentityM(modelMatrix, 0);
+            Matrix.translateM(modelMatrix, 0, px, py, pz);
+            float[] rotate = new float[16];
+            Matrix.setRotateM(rotate, 0, (float)Math.toDegrees(2 * Math.acos(qw)), qx, qy, qz);
+            Matrix.multiplyMM(modelMatrix, 0, modelMatrix, 0, rotate, 0);
+
+            Matrix.multiplyMM(mvpMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+            Matrix.multiplyMM(mvpMatrix, 0, proj, 0, mvpMatrix, 0);
+
+            GLES20.glUniform4f(colHandle, 1.0f, 1.0f, 1.0f, 1.0f); // White cube
+            GLES20.glUniformMatrix4fv(mvpHandle, 1, false, mvpMatrix, 0);
+            GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, 4); // Top
+            GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 4, 4); // Bottom
+            
+            // Connect top and bottom
+            for(int j=0; j<4; j++) GLES20.glDrawArrays(GLES20.GL_LINES, j, 2); 
+
+            // Render Ray
+            Matrix.setIdentityM(modelMatrix, 0);
+            Matrix.translateM(modelMatrix, 0, px, py, pz);
+            Matrix.multiplyMM(modelMatrix, 0, modelMatrix, 0, rotate, 0);
+            Matrix.scaleM(modelMatrix, 0, 0.01f, 0.01f, 50.0f); // 50m long ray
+            Matrix.translateM(modelMatrix, 0, 0, 0, -0.5f); // Extend forward
+
+            Matrix.multiplyMM(mvpMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+            Matrix.multiplyMM(mvpMatrix, 0, proj, 0, mvpMatrix, 0);
+
+            GLES20.glUniform4f(colHandle, 0.0f, 0.5f, 1.0f, 0.5f); // Semi-transparent blue ray
+            GLES20.glUniformMatrix4fv(mvpHandle, 1, false, mvpMatrix, 0);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4); 
+        }
+        GLES20.glDisableVertexAttribArray(posHandle);
+    }
+
+    private float[] createProjectionMatrix(float[] fov) {
+        float near = 0.05f;
+        float far = 100.0f;
+        float left = (float) Math.tan(fov[0]) * near;
+        float right = (float) Math.tan(fov[1]) * near;
+        float up = (float) Math.tan(fov[2]) * near;
+        float down = (float) Math.tan(fov[3]) * near;
+
+        float[] m = new float[16];
+        if (Math.abs(right - left) < 0.001f || Math.abs(up - down) < 0.001f) {
+            Matrix.setIdentityM(m, 0);
+            return m;
+        }
+
+        Matrix.frustumM(m, 0, left, right, down, up, near, far);
+        return m;
     }
 
 

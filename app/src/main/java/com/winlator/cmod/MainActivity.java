@@ -110,20 +110,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Auto-detect XR and adapt for the first time
         if (XrActivity.isSupported() && !sharedPreferences.contains("use_xr")) {
             sharedPreferences.edit().putBoolean("use_xr", true).apply();
-            // Do NOT auto-enable big picture mode for XR devices
-            // Instead, we will go directly into XR mode
         }
 
         // Check if Big Picture Mode is enabled
         boolean isBigPictureModeEnabled = sharedPreferences.getBoolean("enable_big_picture_mode", false);
 
         // For XR devices, skip BigPictureActivity and go directly to XR container launch
+        // For XR devices, handle Big Picture Mode logic normally
         if (XrActivity.isSupported()) {
-            // Skip BigPictureActivity for XR devices - go directly to XR mode
-            // But still need to setup environment first
             if (isBigPictureModeEnabled) {
-                // If big picture mode was enabled, we still skip it for XR
-                Log.d("MainActivity", "XR device detected, skipping BigPictureMode");
+                Log.d("MainActivity", "XR device detected, allowing normal 2D menu first");
             }
         } else if (isBigPictureModeEnabled) {
             // If enabled (non-XR), launch the BigPictureActivity and finish MainActivity
@@ -171,10 +167,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         saveManager = new SaveManager(this);
         containerManager = new ContainerManager(this);
 
-        // For XR devices, automatically setup and launch container
-        if (XrActivity.isSupported()) {
-            setupEnvironment(true);
-        } else if (AUTOMATIC_START) {
+        // Normal environment setup (allows 2D UI first)
+        if (AUTOMATIC_START) {
             setupEnvironment(true);
         } else {
             ActionBar actionBar = getSupportActionBar();

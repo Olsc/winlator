@@ -255,6 +255,9 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
             mouse.setButton(Pointer.Button.BUTTON_SCROLL_UP, buttons[primaryUp.ordinal()]);
             mouse.setButton(Pointer.Button.BUTTON_SCROLL_DOWN, buttons[primaryDown.ordinal()]);
 
+            // Ray interaction
+            updateRayInteraction(buttons);
+
             // Switch immersive/SBS mode
             if (getButtonClicked(buttons, secondaryPress)) {
                 if (buttons[primaryGrip.ordinal()]) {
@@ -292,6 +295,49 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
             mapKey(secondaryDown, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_DOWN));
             mapKey(secondaryLeft, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_LEFT));
             mapKey(secondaryRight, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_RIGHT));
+        }
+    }
+
+    private static void updateRayInteraction(boolean[] buttons) {
+        float[] poses = instance.getControllerPoses();
+        float distance = 5.0f; // Default canvas distance
+        float quadWidth = 4.0f;
+        float quadHeight = quadWidth * (float)instance.getXServer().screenInfo.height / instance.getXServer().screenInfo.width;
+
+        for (int i = 0; i < 2; i++) {
+            float px = poses[i*7], py = poses[i*7+1], pz = poses[i*7+2];
+            float qx = poses[i*7+3], qy = poses[i*7+4], qz = poses[i*7+5], qw = poses[i*7+6];
+
+            // Ray direction (forward is -Z in OpenXR)
+            float vx = -2 * (qx*qz - qw*qy);
+            float vy = -2 * (qy*qz + qw*qx);
+            float vz = -(1 - 2 * (qx*qx + qy*qy));
+
+            if (vz < -0.01f) { // Ray pointing towards the screen
+                float t = (-distance - pz) / vz;
+                if (t > 0) {
+                    float hx = px + t * vx;
+                    float hy = py + t * vy;
+
+                    float u = (hx / quadWidth) + 0.5f;
+                    float v = 0.5f - (hy / quadHeight);
+
+                    if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
+                        Pointer mouse = instance.getXServer().pointer;
+                        int tx = (int)(u * instance.getXServer().screenInfo.width);
+                        int ty = (int)(v * instance.getXServer().screenInfo.height);
+                        
+                        // If trigger is pressed, move and click
+                        boolean trigger = (i == 0) ? buttons[ControllerButton.L_TRIGGER.ordinal()] : buttons[ControllerButton.R_TRIGGER.ordinal()];
+                        if (trigger) {
+                            mouse.setPosition(tx, ty);
+                            mouse.setButton(Pointer.Button.BUTTON_LEFT, true);
+                            smoothedMouse[0] = tx;
+                            smoothedMouse[1] = ty;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -333,9 +379,13 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
     public native int getWidth();
     public native int getHeight();
     public native boolean beginFrame(boolean immersive, boolean sbs);
+    public native void beginEye(int eye);
+    public native void endEye();
     public native void endFrame();
 
     // Input
     public native float[] getAxes();
     public native boolean[] getButtons();
+    public native float[] getControllerPoses();
+    public native float[] getFov(int eye);
 }

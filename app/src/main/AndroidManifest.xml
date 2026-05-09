@@ -91,6 +91,8 @@
             android:screenOrientation="landscape"
             android:configChanges="density|orientation|screenSize|keyboard|keyboardHidden|uiMode"
             android:exported="true">
+            <meta-data android:name="pvr.app.type" android:value="vr" />
+            <meta-data android:name="pvr.sdk.version" android:value="2.0" />
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="com.oculus.intent.category.VR" />
@@ -149,7 +151,5 @@
         <meta-data
             android:name="com.samsung.android.multidisplay.keep_process_alive"
             android:value="false"/>
-        <meta-data android:name="pvr.app.type" android:value="vr" />
-        <meta-data android:name="pvr.sdk.version" android:value="2.0" />
     </application>
 </manifest>
