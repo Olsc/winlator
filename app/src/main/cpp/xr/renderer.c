@@ -82,6 +82,7 @@ void XrRendererInit(struct XrEngine* engine, struct XrRenderer* renderer)
     renderer->HmdOrientation.x = 0;
     renderer->HmdOrientation.y = 0;
     renderer->HmdOrientation.z = 0;
+    renderer->ConfigFloat[CONFIG_CANVAS_DISTANCE] = 2.0f;
 
     if (engine->PlatformFlag[PLATFORM_EXTENSION_PASSTHROUGH])
     {
@@ -512,7 +513,7 @@ void XrRendererFinishFrame(struct XrEngine* engine, struct XrRenderer* renderer,
     // Add Quad Layer (Wine Screen) for Screen modes
     if ((mode == RENDER_MODE_MONO_SCREEN) || (mode == RENDER_MODE_STEREO_SCREEN))
     {
-        float distance = 2.0f; // Fixed distance of 2 meters as requested
+        float distance = renderer->ConfigFloat[CONFIG_CANVAS_DISTANCE];
         // Use the captured height from the last recenter to ensure the window is at eye level and level with gravity.
         XrVector3f pos = {0, renderer->RecenterHeight, -distance};
         

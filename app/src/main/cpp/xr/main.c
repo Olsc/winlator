@@ -63,6 +63,12 @@ JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_bindFramebuffer(JNIEnv 
     }
 }
 
+JNIEXPORT void JNICALL Java_com_winlator_cmod_XrActivity_setCanvasDistance(JNIEnv *env, jobject obj, jfloat distance) {
+    if (xr_initialized) {
+        xr_module_renderer.ConfigFloat[CONFIG_CANVAS_DISTANCE] = distance;
+    }
+}
+
 JNIEXPORT jint JNICALL Java_com_winlator_cmod_XrActivity_getWidth(JNIEnv *env, jobject obj) {
     int w, h;
     XrRendererGetResolution(&xr_module_engine, &xr_module_renderer, &w, &h);

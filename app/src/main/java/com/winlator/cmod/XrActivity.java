@@ -45,6 +45,7 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
 
     private static boolean isDeviceDetectionFinished = false;
     private static boolean isDeviceSupported = false;
+    private static boolean isMetaQuest = false;
     private static boolean isEnabled = false;
     private static boolean isImmersive = false;
     private static boolean isSBS = false;
@@ -54,6 +55,9 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
     private static String lastText = "";
     private static float mouseSpeed = 1;
     private static final float[] smoothedMouse = new float[2];
+    private static float screenDistance = 2.0f;
+    private static int leftClickDelay = 0;
+    private static int rightClickDelay = 0;
     private static XrActivity instance;
 
     @Override
@@ -155,8 +159,10 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         if (!isDeviceDetectionFinished) {
             String manufacturer = Build.MANUFACTURER.toUpperCase();
             if (manufacturer.contains("META") || 
-                manufacturer.contains("OCULUS") || 
-                manufacturer.contains("PICO") || 
+                manufacturer.contains("OCULUS")) {
+                isMetaQuest = true;
+                isDeviceSupported = true;
+            } else if (manufacturer.contains("PICO") || 
                 manufacturer.contains("BYTEDANCE") || 
                 manufacturer.contains("HTC") || 
                 manufacturer.contains("VIVE") || 
@@ -221,8 +227,31 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
             // Mouse control with thumbstick
             int mouseXAxis = primaryController == 0 ? ControllerAxis.L_THUMBSTICK_X.ordinal() : ControllerAxis.R_THUMBSTICK_X.ordinal();
             int mouseYAxis = primaryController == 0 ? ControllerAxis.L_THUMBSTICK_Y.ordinal() : ControllerAxis.R_THUMBSTICK_Y.ordinal();
-            float dx = axes[mouseXAxis] * mouseSpeed * 20.0f;
-            float dy = axes[mouseYAxis] * mouseSpeed * 20.0f;
+            float sensitivityMultiplier = (primaryController == 1) ? 12.0f : 20.0f;
+            float dx = axes[mouseXAxis] * mouseSpeed * sensitivityMultiplier;
+            float dy = axes[mouseYAxis] * mouseSpeed * sensitivityMultiplier;
+
+            // Pause thumbstick movement when clicking to prevent accidental drift
+            boolean isClicking = buttons[ControllerButton.R_TRIGGER.ordinal()] || buttons[ControllerButton.R_GRIP.ordinal()] ||
+                                 buttons[ControllerButton.L_TRIGGER.ordinal()] || buttons[ControllerButton.L_GRIP.ordinal()];
+            if (isClicking) {
+                dx = 0;
+                dy = 0;
+            }
+
+            // Invert movement for Meta Quest devices as requested
+            if (isMetaQuest) {
+                dx = -dx;
+                dy = -dy;
+            }
+
+            // Right thumbstick Y for screen distance (Forward -> Back, Backward -> Forward)
+            float ry = axes[ControllerAxis.R_THUMBSTICK_Y.ordinal()];
+            if (Math.abs(ry) > 0.1f) {
+                screenDistance += ry * 0.05f;
+                screenDistance = Mathf.clamp(screenDistance, 0.5f, 10.0f);
+                instance.setCanvasDistance(screenDistance);
+            }
 
             // Mouse control with head
             Pointer mouse = instance.getXServer().pointer;
@@ -293,7 +322,7 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
 
     private static void updateRayInteraction(boolean[] buttons, ControllerButton primaryTrigger, ControllerButton primaryGrip, ControllerButton primaryUp, ControllerButton primaryDown) {
         float[] poses = instance.getControllerPoses();
-        float distance = 2.0f; // Set distance to 2 meters as requested
+        float distance = screenDistance;
         float quadWidth = 4.0f;
         float quadHeight = quadWidth * (9.0f / 16.0f);
 
@@ -322,19 +351,26 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
                         int tx = (int)(u * instance.getXServer().screenInfo.width);
                         int ty = (int)(v * instance.getXServer().screenInfo.height);
                         
-                        // Apply low-pass filtering to reduce jitter and improve double-click stability
-                        smoothedMouse[0] = smoothedMouse[0] * 0.5f + tx * 0.5f;
-                        smoothedMouse[1] = smoothedMouse[1] * 0.5f + ty * 0.5f;
-                        
                         boolean trigger = buttons[ControllerButton.R_TRIGGER.ordinal()];
                         boolean grip = buttons[ControllerButton.R_GRIP.ordinal()];
+                        
+                        // Apply low-pass filtering to reduce jitter and improve double-click stability
+                        // When clicking, use absolute smoothing (1.0f) to freeze the cursor completely
+                        float smoothing = (trigger || grip) ? 1.0f : 0.8f;
+                        smoothedMouse[0] = smoothedMouse[0] * smoothing + tx * (1.0f - smoothing);
+                        smoothedMouse[1] = smoothedMouse[1] * smoothing + ty * (1.0f - smoothing);
                         
                         // Update mouse position (using smoothed values)
                         mouse.setPosition((int)smoothedMouse[0], (int)smoothedMouse[1]);
                         
+                        // Stabilization delay: only trigger the click after the cursor has been frozen for a few frames
+                        if (trigger) leftClickDelay++; else leftClickDelay = 0;
+                        if (grip) rightClickDelay++; else rightClickDelay = 0;
+                        
                         // Update mouse buttons (Left Click for Trigger, Right Click for Grip)
-                        mouse.setButton(Pointer.Button.BUTTON_LEFT, trigger);
-                        mouse.setButton(Pointer.Button.BUTTON_RIGHT, grip);
+                        // Using a 3-frame delay for the 'down' event to ensure stability
+                        mouse.setButton(Pointer.Button.BUTTON_LEFT, leftClickDelay >= 3);
+                        mouse.setButton(Pointer.Button.BUTTON_RIGHT, rightClickDelay >= 3);
                         
                         hit = true;
                         break;
@@ -388,6 +424,7 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
 
     // Rendering
     public native void init();
+    public native void setCanvasDistance(float distance);
     public native void bindFramebuffer();
     public native void bindScreenFramebuffer();
     public native int getWidth();
