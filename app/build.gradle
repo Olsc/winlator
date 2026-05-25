@@ -55,6 +55,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    lint {
+        disable 'ExpiredTargetSdkVersion'
+    }
+
     // Keep Winlator’s buildTypes
     buildTypes {
         debug {

@@ -493,6 +493,8 @@
     <string name="do_you_want_to_add_a_new_profile">Do you want to add a new profile?</string>
 
     <string name="default_profile">Default Profile</string>
+    <string name="save_profile">Save Profile</string>
+    <string name="remove_profile">Remove Profile</string>
 
     <string name="reset">Reset</string>
 
