@@ -1195,6 +1195,7 @@ public class ContainerDetailFragment extends Fragment {
         byte[] controllerMapping = new byte[ids.length];
         for (int i = 0; i < ids.length; i++) {
             int index =  ((Spinner)view.findViewById(ids[i])).getSelectedItemPosition();
+            if (index < 0) index = 0;
             byte value = XKeycode.values()[index].id;
             controllerMapping[i] = value;
         }
