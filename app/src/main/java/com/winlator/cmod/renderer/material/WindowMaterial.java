@@ -30,7 +30,11 @@ public class WindowMaterial extends ShaderMaterial {
             "varying vec2 vUV;\n" +
 
             "void main() {\n" +
-                "gl_FragColor = vec4(texture2D(texture, vUV).rgb, 1.0);\n" +
+                // X11/Wine window content is sRGB-encoded. Decode it to linear
+                // here so the OpenXR runtime's sRGB conversion (srgb_format_convert)
+                // produces the correct colors instead of a washed-out/greyish image.
+                "vec3 color = texture2D(texture, vUV).rgb;\n" +
+                "gl_FragColor = vec4(pow(color, vec3(2.2)), 1.0);\n" +
             "}"
         ;
     }

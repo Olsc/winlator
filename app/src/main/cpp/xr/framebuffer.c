@@ -10,7 +10,7 @@
 
 bool XrFramebufferCreate(struct XrFramebuffer *framebuffer, XrSession session, int width, int height)
 {
-    memset(framebuffer, 0, sizeof(framebuffer));
+    memset(framebuffer, 0, sizeof(*framebuffer));
 #if XR_USE_GRAPHICS_API_OPENGL_ES
     return XrFramebufferCreateGL(framebuffer, session, width, height);
 #else
@@ -53,7 +53,7 @@ void XrFramebufferAcquire(struct XrFramebuffer *framebuffer)
 #if XR_USE_GRAPHICS_API_OPENGL_ES
     GL(glEnable(GL_SCISSOR_TEST));
     GL(glViewport(0, 0, framebuffer->Width, framebuffer->Height));
-    GL(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+    GL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
     GL(glScissor(0, 0, framebuffer->Width, framebuffer->Height));
     GL(glClear(GL_COLOR_BUFFER_BIT));
     GL(glScissor(0, 0, 0, 0));

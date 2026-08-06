@@ -11,6 +11,7 @@
 #ifdef ANDROID
 #include <android/log.h>
 #define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, "OpenXR", __VA_ARGS__);
+#define ALOGW(...) __android_log_print(ANDROID_LOG_WARN, "OpenXR", __VA_ARGS__);
 #define ALOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, "OpenXR", __VA_ARGS__);
 
 #include <EGL/egl.h>
@@ -21,6 +22,7 @@
 #else
 #include <cstdio>
 #define ALOGE(...) printf(__VA_ARGS__)
+#define ALOGW(...) printf(__VA_ARGS__)
 #define ALOGV(...) printf(__VA_ARGS__)
 #endif
 

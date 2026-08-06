@@ -95,7 +95,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
         initXRResources();
     }
@@ -181,7 +181,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if (xrFrame) {
             // Render Wine windows to the dedicated screen layer
             XrActivity.getInstance().beginScreen();
-            GLES20.glClearColor(0, 0, 0, 0);
+            GLES20.glClearColor(0, 0, 0, 1);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
             renderWindows(xrImmersive);
@@ -194,7 +194,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             // Render controllers and rays to eye layers
             for (int eye = 0; eye < 2; eye++) {
                 XrActivity.getInstance().beginEye(eye);
-                GLES20.glClearColor(0, 0, 0, 0);
+                GLES20.glClearColor(0, 0, 0, 1);
                 GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
                 renderXRControllers(eye);
                 XrActivity.getInstance().endEye();
